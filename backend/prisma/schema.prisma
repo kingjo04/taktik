@@ -1,0 +1,239 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ExamCategory {
+  id         Int       @id @default(autoincrement())
+  category   String
+  name       String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime? // Nullable
+
+  soal Soal[]
+}
+
+model Category {
+  id         Int       @id @default(autoincrement())
+  category   String
+  name       String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime? // Nullable
+
+  soal Soal[]
+}
+
+model Soal {
+  id               Int       @id @default(autoincrement())
+  title            String
+  category_id      Int
+  exam_category_id Int
+  grade_id         Int
+  duration         Int
+  total_question   Int
+  price            Int
+  is_free          Boolean
+  is_public        Boolean
+  rating           Float
+  banner_image     String? // Nullable
+  creator_id       Int
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime? // Nullable
+
+  exam_category ExamCategory @relation(fields: [exam_category_id], references: [id])
+  category      Category     @relation(fields: [category_id], references: [id])
+  questions     Question[] // Relasi ke tabel Question
+  user_answers  UserAnswer[] // Relasi ke tabel UserAnswer
+  histories     History[]
+  feedbacks     Feedback[] // Relasi dengan Feedback 
+}
+
+model Question {
+  id         Int      @id @default(autoincrement())
+  soal_id    Int
+  question   String
+  correct    String // Menyimpan jawaban benar (misalnya "A", "B", "C", atau "D")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  soal         Soal         @relation(fields: [soal_id], references: [id])
+  options      Option[] // Relasi ke tabel pilihan jawaban
+  user_answers UserAnswer[] // Relasi ke tabel UserAnswer
+}
+
+model Option {
+  id          Int    @id @default(autoincrement())
+  question_id Int
+  label       String // Misalnya "A", "B", "C", "D"
+  content     String // Isi jawaban untuk label tersebut
+
+  question Question @relation(fields: [question_id], references: [id])
+}
+
+model UserAnswer {
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  soal_id     Int
+  question_id Int
+  chosen      String // Jawaban yang dipilih user (misalnya "A", "B", "C", atau "D")
+  is_correct  Boolean // Menyimpan apakah jawaban benar atau tidak
+
+  soal     Soal     @relation(fields: [soal_id], references: [id])
+  question Question @relation(fields: [question_id], references: [id])
+}
+
+model History {
+  id         Int      @id @default(autoincrement())
+  user_id    Int // ID user yang mengerjakan soal
+  soal_id    Int // ID soal yang dikerjakan
+  score      Int // Skor yang diperoleh pengguna
+  answers    Json // Jawaban yang diberikan oleh user
+  created_at DateTime @default(now()) // Waktu saat jawaban disimpan
+  updated_at DateTime @updatedAt // Waktu saat data terakhir diperbarui
+
+  soal Soal @relation(fields: [soal_id], references: [id]) // Relasi ke model Soal
+}
+
+model Feedback {
+  id        Int     @id @default(autoincrement())
+  rating    Int
+  feedback  String
+  soal      Soal    @relation(fields: [soal_id], references: [id])
+  soal_id   Int
+}
+
+model Program {
+  id             String  @id @default(uuid())
+  name           String
+  start_date     DateTime
+  end_date       DateTime
+  description    String?  @db.Text
+  creator_id     Int
+  price          Int
+  image_banner   String
+  is_enrolled    Boolean @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  status_id      Int
+  matter_id      Int
+  with_passing_grade Boolean
+
+  // Relasi ke AgendaProgram
+  agendas AgendaProgram[]
+  programsoals ProgramSoal[]
+  materi        Materi[] // Relasi dengan Material 
+}
+
+model AgendaProgram {
+  id          String   @id @default(uuid())
+  program_id  String
+  agenda      String
+  start_date  DateTime
+  end_date    DateTime
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relasi ke Program
+  program Program @relation(fields: [program_id], references: [id], onDelete: Cascade)
+}
+
+model ProgramSoal {
+  id               Int       @id @default(autoincrement())
+  title            String
+  program_id       String
+  grade_id         Int
+  duration         Int
+  total_question   Int
+  price            Int
+  is_free          Boolean
+  is_public        Boolean
+  rating           Float
+  banner_image     String? // Nullable
+  creator_id       Int
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime? // Nullable
+
+  program       Program @relation(fields: [program_id], references: [id])
+  questions     ProgramQuestion[] // Relasi ke tabel Question
+  user_answers  ProgramUserAnswer[] // Relasi ke tabel UserAnswer
+  histories     ProgramHistory[]
+  feedbacks     ProgramFeedback[] // Relasi dengan Feedback 
+}
+
+model ProgramQuestion {
+  id         Int      @id @default(autoincrement())
+  soal_id    Int
+  question   String
+  correct    String // Menyimpan jawaban benar (misalnya "A", "B", "C", atau "D")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  soal         ProgramSoal         @relation(fields: [soal_id], references: [id])
+  options      ProgramOption[] // Relasi ke tabel pilihan jawaban
+  user_answers ProgramUserAnswer[] // Relasi ke tabel UserAnswer
+}
+
+model ProgramOption {
+  id          Int    @id @default(autoincrement())
+  question_id Int
+  label       String // Misalnya "A", "B", "C", "D"
+  content     String // Isi jawaban untuk label tersebut
+
+  question ProgramQuestion @relation(fields: [question_id], references: [id])
+}
+
+model ProgramUserAnswer {
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  soal_id     Int
+  question_id Int
+  chosen      String // Jawaban yang dipilih user (misalnya "A", "B", "C", atau "D")
+  is_correct  Boolean // Menyimpan apakah jawaban benar atau tidak
+
+  soal     ProgramSoal     @relation(fields: [soal_id], references: [id])
+  question ProgramQuestion @relation(fields: [question_id], references: [id])
+}
+
+model ProgramHistory {
+  id         Int      @id @default(autoincrement())
+  user_id    Int // ID user yang mengerjakan soal
+  soal_id    Int // ID soal yang dikerjakan
+  score      Int // Skor yang diperoleh pengguna
+  answers    Json // Jawaban yang diberikan oleh user
+  created_at DateTime @default(now()) // Waktu saat jawaban disimpan
+  updated_at DateTime @updatedAt // Waktu saat data terakhir diperbarui
+
+  soal ProgramSoal @relation(fields: [soal_id], references: [id]) // Relasi ke model Soal
+}
+
+model ProgramFeedback {
+  id        Int     @id @default(autoincrement())
+  rating    Int
+  feedback  String
+  soal      ProgramSoal    @relation(fields: [soal_id], references: [id])
+  soal_id   Int
+}
+
+model Materi {
+  id          Int    @id @default(autoincrement())
+  programId   String
+  title       String
+  youtubeLink String
+  Program     Program @relation(fields: [programId], references: [id])
+}
+
