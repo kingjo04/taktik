@@ -3,13 +3,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { jwtDecode } from "jwt-decode";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons/faArrowLeft";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
 
 export default function CPNS() {
   const [name, setName] = useState("");
   const [photoProfile, setPhotoProfile] = useState("");
   const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -22,7 +23,6 @@ export default function CPNS() {
         setName(user.name);
         setPhotoProfile(user.photo_profile);
 
-        // Fetch exams after getting the token
         fetchExams(token);
       } catch (error) {
         console.error("Invalid token:", error);
@@ -34,8 +34,9 @@ export default function CPNS() {
 
   const fetchExams = async (token: string) => {
     try {
+      setLoading(true);
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/soal?category_id=1`,
+        "https://api.taktix.co.id/exam?page=1&per_page=20&category_id=4002&title=&is_public=true",
         {
           method: "GET",
           headers: {
@@ -50,59 +51,79 @@ export default function CPNS() {
       }
 
       const data = await response.json();
+      console.log("Fetched exams:", data.data); // Debug data
       setExams(data.data); // Set exams data to state
     } catch (error) {
       console.error("Error fetching exams:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-white">
+        <div className="text-2xl text-blue-600 animate-pulse">Memuat Ujian CPNS...</div>
+      </div>
+    );
+  }
+
+  if (!exams.length) {
+    return (
+      <div className="mx-40 my-14">
+        <div className="flex items-center">
+          <button type="button" className="mt-1" onClick={() => router.back()}>
+            <FontAwesomeIcon icon={faArrowLeft} className="size-5 opacity-75" />
+          </button>
+          <h1 className="ml-4 my-2">CPNS</h1>
+        </div>
+        <p className="text-center text-gray-500 mt-10">Tidak ada ujian tersedia.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-40 my-14">
       <div className="flex items-center">
-        <button type="button" className="mt-1" onClick={() => router.back()}>
-          <FontAwesomeIcon icon={faArrowLeft} className="size-5 opacity-75" />
+        <button
+          type="button"
+          className="mt-1 p-2 bg-blue-100 rounded-full hover:bg-blue-200 transition"
+          onClick={() => router.back()}
+        >
+          <FontAwesomeIcon icon={faArrowLeft} className="size-5 text-blue-600" />
         </button>
-        <h1 className="ml-4 my-2">CPNS</h1>
+        <h1 className="ml-4 my-2 text-3xl font-bold text-gray-800">CPNS</h1>
       </div>
 
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-6">
         <div className="flex items-center">
           <div className="h-6 w-2 rounded-lg bg-yellow-300"></div>
-          <h1 className="ml-4 my-2">Latihan Ujian CPNS</h1>
+          <h2 className="ml-4 text-xl font-semibold text-gray-700">Latihan Ujian CPNS</h2>
         </div>
       </div>
 
-      {/* Main item start */}
-      <div className="grid grid-cols-4 gap-4 text-xs font-medium text-black mt-4 max-md:flex-wrap">
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {exams.map((exam: any) => (
           <div
             key={exam.id}
-            className="flex flex-col flex-1 px-5 py-3 bg-white rounded-3xl border border-solid border-zinc-500"
-            style={{ minHeight: "100px" }} // Menyediakan tinggi minimum yang konsisten
+            className="flex flex-col p-5 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow border border-gray-200"
           >
-            {/* Heading and Title */}
             <div className="flex gap-2.5 text-base whitespace-normal break-words">
               <div className="flex items-center">
                 <div className="h-6 w-2 rounded-lg bg-yellow-300"></div>
-                <h1 className="ml-2 my-2">{exam.title}</h1>
+                <h3 className="ml-2 text-lg font-semibold text-gray-800">{exam.title}</h3>
               </div>
             </div>
-
-            {/* Category Info */}
-            <div className="self-start mt-1.5 ml-3 text-neutral-500 max-md:ml-2.5">
+            <p className="mt-2 text-gray-600 text-sm">
               Kategori: {exam.category.name}
-            </div>
-
-            {/* Footer (Question Count, Duration, and Link) */}
-            <div className="flex gap-5 justify-between mt-auto">
-              {" "}
-              {/* mt-auto forces the footer to stick at the bottom */}
-              <div className="gap-0 my-auto text-neutral-400">
-                {exam.total_question} Soal {exam.duration} Menit
-              </div>
+            </p>
+            <div className="mt-auto flex justify-between items-end">
+              <p className="text-gray-500 text-sm">
+                {exam.total_question} Soal, {exam.duration} Menit
+              </p>
               <Link
                 href={`/soal/${exam.id}`}
-                className="justify-center px-3.5 py-2 bg-green-400 text-white rounded"
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
               >
                 Gratis
               </Link>
@@ -110,7 +131,6 @@ export default function CPNS() {
           </div>
         ))}
       </div>
-      {/* Main item finish */}
     </div>
   );
 }
