@@ -45,7 +45,7 @@ export default function LoginPage() {
             popup: "rounded-xl",
             confirmButton: "px-6 py-2 font-semibold",
           },
-        }).then(() => router.push("/program"));
+        }).then(() => router.push("/"));
       } else {
         throw new Error("Token tidak ditemukan dalam respons.");
       }
