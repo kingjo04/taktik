@@ -1,10 +1,16 @@
 "use client";
+
 import { useState, ChangeEvent, FormEvent } from "react";
-import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ieknphduleynhuiaqsuc.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlla25waHR1bGV5bmh1aWFxc3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTY4ODAsImV4cCI6MjA2ODA5Mjg4MH0.iZBnS3uGs68CmqrhQYAJdCZZGRqlKEThrm0B0FqyPVs"
+);
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -21,19 +27,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "https://api.taktix.co.id/login",
-        { email: formData.email, password: formData.password },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      const data = response.data;
+      if (error) throw error;
 
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("name", data.user.name || "");
-        localStorage.setItem("photo_profile", data.user.photo_profile || "");
-        localStorage.setItem("email", data.user.email || "");
+      if (data.session?.access_token) {
+        localStorage.setItem("token", data.session.access_token);
+        localStorage.setItem("name", data.user?.user_metadata?.name || data.user?.email.split("@")[0] || "");
+        localStorage.setItem("photo_profile", data.user?.user_metadata?.photo_profile || "");
+        localStorage.setItem("email", data.user?.email || "");
 
         Swal.fire({
           title: "Login Berhasil!",
@@ -47,11 +52,11 @@ export default function LoginPage() {
           },
         }).then(() => router.push("/program"));
       } else {
-        throw new Error("Token tidak ditemukan dalam respons.");
+        throw new Error("Session tidak ditemukan dalam respons.");
       }
     } catch (error) {
       console.error("Error logging in:", error);
-      setErrors("Token Tidak Valid. Silahkan login kembali.");
+      setErrors("Email atau password salah. Silakan coba lagi.");
     }
   };
 
