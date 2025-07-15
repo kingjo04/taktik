@@ -35,7 +35,10 @@ export default function LoginPage() {
 
       if (data.session?.access_token) {
         localStorage.setItem("token", data.session.access_token);
-        localStorage.setItem("name", data.user?.user_metadata?.name || data.user?.email.split("@")[0] || "");
+        localStorage.setItem(
+          "name",
+          data.user?.user_metadata?.name || (data.user?.email ? data.user.email.split("@")[0] : "") || ""
+        );
         localStorage.setItem("photo_profile", data.user?.user_metadata?.photo_profile || "");
         localStorage.setItem("email", data.user?.email || "");
 
@@ -49,7 +52,7 @@ export default function LoginPage() {
             popup: "rounded-xl",
             confirmButton: "px-6 py-2 font-semibold",
           },
-        }).then(() => router.push("/")); 
+        }).then(() => router.push("/program"));
       } else {
         throw new Error("Session tidak ditemukan dalam respons.");
       }
