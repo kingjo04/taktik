@@ -139,7 +139,7 @@ export default function LoginPage() {
                 type="submit"
                 className="bg-blue-900 text-white py-3 rounded-full font-semibold text-sm sm:text-base hover:bg-blue-800 transition-all duration-300 hover:shadow-md"
               >
-                Masuk Sekarang
+                Masuk Sekarangas
               </button>
 
               <p className="text-center text-sm sm:text-base text-gray-600 font-medium mt-4 sm:mt-5">
