@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, PostgrestError } from "@supabase/supabase-js"; // Impor PostgrestError
 import { useRouter, useParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
@@ -76,15 +76,17 @@ export default function KunciJawaban() {
         }
 
         const questionIds = questionData.map((q) => q.id);
-        const { data: answerCheck, error: checkError } = await supabase
+        const { data: userAnswerData, error: userAnswerError } = await supabase
           .from("user_answers")
-          .select("id, question_id")
+          .select("*")
           .eq("user_id", userId)
           .in("question_id", questionIds);
 
-        if (checkError || !answerCheck || answerCheck.length === 0) {
-          throw new Error("Anda belum menyelesaikan ujian ini.");
+        if (userAnswerError) {
+          if (userAnswerError instanceof Error) throw userAnswerError;
+          throw new Error((userAnswerError as PostgrestError).message || "Error fetching user answers");
         }
+        setUserAnswers(userAnswerData as Answer[]);
 
         // Ambil semua questions untuk tryout_id
         const { data: fullQuestionData, error: fullQuestionError } = await supabase
@@ -97,19 +99,9 @@ export default function KunciJawaban() {
         }
 
         setQuestions(fullQuestionData as Question[]);
-
-        // Ambil semua jawaban user berdasarkan user_id
-        const { data: userAnswerData, error: userAnswerError } = await supabase
-          .from("user_answers")
-          .select("*")
-          .eq("user_id", userId)
-          .in("question_id", questionIds);
-
-        if (userAnswerError) throw userAnswerError;
-        setUserAnswers(userAnswerData as Answer[]);
       } catch (err) {
         console.error("Error fetching kunci jawaban:", err);
-        setError(err.message || "Gagal mengambil kunci jawaban.");
+        setError(err instanceof Error ? err.message : "Gagal mengambil kunci jawaban.");
       } finally {
         setLoading(false);
       }
@@ -130,7 +122,7 @@ export default function KunciJawaban() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-white">
         <div className="text-red-500 text-xl">{error}</div>
-        {!token && (
+        {error.includes("Token") && (
           <button
             onClick={() => router.push("/login")}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
