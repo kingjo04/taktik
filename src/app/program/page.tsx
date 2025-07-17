@@ -8,10 +8,10 @@ import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
 interface Program {
-  id: string;
+  id: number; // Ubah dari string ke number karena INTEGER
   name: string;
   price: number;
-  image_banner: string;
+  image_url: string; // Ubah dari image_banner ke image_url sesuai tabel baru
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -35,31 +35,22 @@ export default function Program() {
           return;
         }
 
-        // Debug dan decode token
+        // Decode token untuk ambil user_id (asumsi ada di sub atau custom claim)
         let decodedToken;
         try {
           decodedToken = jwtDecode(token);
-          console.log("Decoded Token:", decodedToken);
+          const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan struktur token
+          if (!userId) throw new Error("User ID tidak ditemukan di token");
+          console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        // Validasi session Supabase
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !sessionData.session) {
-          console.error("Session validation failed:", sessionError?.message);
-          router.push("/login");
-          return;
-        }
-
-        // Gunakan session otomatis, nggak perlu setAuth
-        console.log("Session valid, fetching programs...");
-
-        // Fetch data programs
+        // Fetch data programs dengan kolom yang sesuai
         const { data, error } = await supabase
           .from("programs")
-          .select("*")
+          .select("id, name, price, image_url") // Pilih kolom yang ada
           .order("created_at", { ascending: false });
         if (error) {
           console.error("Fetch error:", error.message);
@@ -76,6 +67,38 @@ export default function Program() {
 
     fetchPrograms();
   }, [router]);
+
+  const handleProgramClick = async (programId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan token
+
+      if (userId) {
+        const { error } = await supabase.from("user_activities").insert({
+          user_id: Number(userId), // Konversi ke number karena INTEGER
+          program_id: programId,
+          activity_type: "view",
+          created_at: new Date().toISOString(),
+        });
+
+        if (error) {
+          console.error("Error saving activity:", error.message);
+        } else {
+          console.log("Activity saved for user:", userId, "program:", programId);
+        }
+      }
+
+      router.push(`/program/${programId}`); // Arahkan ke detail
+    } catch (err) {
+      console.error("Error handling program click:", err);
+    }
+  };
 
   const educationImages = [
     "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
@@ -122,11 +145,11 @@ export default function Program() {
       <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {programs.length > 0 ? (
           programs.map((program, index) => {
-            const imageUrl = program.image_banner || educationImages[index % educationImages.length];
+            const imageUrl = program.image_url || educationImages[index % educationImages.length];
             return (
-              <a
+              <div
                 key={program.id}
-                href={`/program/${program.id}`} // Ubah ke /programDetail/[id]
+                onClick={() => handleProgramClick(program.id)}
                 className="block rounded-xl overflow-hidden min-h-[250px] sm:min-h-[300px] cursor-pointer bg-white shadow-md hover:shadow-lg transition-shadow"
               >
                 <div
@@ -151,7 +174,7 @@ export default function Program() {
                     Klik untuk detail program
                   </p>
                 </div>
-              </a>
+              </div>
             );
           })
         ) : (
