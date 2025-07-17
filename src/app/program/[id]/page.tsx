@@ -1,19 +1,27 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter, useParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 import Swal from "sweetalert2";
+import { jwtDecode } from "jwt-decode";
 
 interface ProgramDetail {
-  id: string;
+  id: number;
   name: string;
   description: string;
   duration: string;
   price: number;
-  image_banner: string;
+  image_url: string;
+}
+
+interface Tryout {
+  id: number;
+  name: string;
+  is_active: boolean;
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -24,8 +32,12 @@ export default function ProgramDetail() {
   const router = useRouter();
   const { id } = useParams();
   const [program, setProgram] = useState<ProgramDetail | null>(null);
+  const [tryouts, setTryouts] = useState<Tryout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [ticketInput, setTicketInput] = useState("");
+  const [isRegistered, setIsRegistered] = useState(false);
 
   const fetchProgramDetail = async () => {
     setLoading(true);
@@ -33,20 +45,60 @@ export default function ProgramDetail() {
     try {
       const token = localStorage.getItem("token");
       if (!token || !id) {
+        console.log("No token or ID, redirecting to login");
         router.push("/login");
         return;
       }
 
-      const { data, error } = await supabase
+      const programId = Number(id);
+      if (isNaN(programId)) throw new Error("ID program tidak valid");
+
+      const { data: programData, error: programError } = await supabase
         .from("programs")
-        .select("*")
-        .eq("id", id)
+        .select("id, name, description, duration, price, image_url")
+        .eq("id", programId)
         .single();
-      if (error) throw error;
-      setProgram(data as ProgramDetail);
+      if (programError) throw programError;
+      setProgram(programData as ProgramDetail);
+
+      const { data: tryoutData, error: tryoutError } = await supabase
+        .from("tryouts")
+        .select("id, name, is_active")
+        .eq("program_id", programId)
+        .eq("is_active", true)
+        .order("id", { ascending: true });
+      if (tryoutError) throw tryoutError;
+      setTryouts(tryoutData as Tryout[]);
+      console.log("Tryouts fetched:", tryoutData);
+
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken.sub || decodedToken.user?.id;
+      console.log("Decoded User ID:", userId);
+      if (userId) {
+        const { data: registration } = await supabase
+          .from("user_registrations")
+          .select("id")
+          .eq("user_id", Number(userId))
+          .eq("program_id", programId)
+          .limit(1);
+        setIsRegistered(!!registration?.length);
+        console.log("Is Registered:", !!registration?.length);
+
+        const { error: activityError } = await supabase.from("user_activities").insert({
+          user_id: Number(userId),
+          program_id: programId,
+          activity_type: "view",
+          created_at: new Date().toISOString(),
+        });
+        if (activityError) {
+          console.error("Error saving activity:", activityError.message);
+        } else {
+          console.log("Activity saved for user:", userId, "program:", programId);
+        }
+      }
     } catch (err) {
-      setError("Gagal memuat detail program. Coba lagi nanti.");
-      console.error("Error fetching program detail:", err);
+      setError("Gagal memuat detail program atau tryout: " + (err as Error).message);
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
@@ -55,6 +107,102 @@ export default function ProgramDetail() {
   useEffect(() => {
     if (id) fetchProgramDetail();
   }, [id]);
+
+  const handleRegister = () => {
+    console.log("Opening register modal, isRegistered:", isRegistered);
+    if (!isRegistered) setShowRegisterModal(true);
+  };
+
+  const handleTicketRegister = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    const decodedToken = jwtDecode(token);
+    const userId = decodedToken.sub || decodedToken.user?.id;
+    if (!userId || !ticketInput) {
+      Swal.fire({
+        title: "Error",
+        text: "Masukkan kode tiket yang valid.",
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#DC2626",
+      });
+      return;
+    }
+
+    try {
+      console.log("Checking ticket:", ticketInput, "for program:", id);
+      const { data, error } = await supabase
+        .from("tickets_available")
+        .select("id, program_id")
+        .eq("ticket_code", ticketInput)
+        .eq("program_id", Number(id))
+        .single();
+      if (error || !data) {
+        Swal.fire({
+          title: "Error",
+          text: "Kode tiket tidak valid atau tidak tersedia.",
+          icon: "error",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#DC2626",
+        });
+        return;
+      }
+      console.log("Ticket found:", data);
+
+      // Manual insert tanpa stored procedure
+      const { error: deleteError } = await supabase
+        .from("tickets_available")
+        .delete()
+        .eq("ticket_code", ticketInput)
+        .eq("program_id", Number(id));
+      if (deleteError) throw deleteError;
+      console.log("Ticket deleted from available");
+
+      const { error: insertError } = await supabase
+        .from("user_registrations")
+        .insert({
+          user_id: Number(userId),
+          program_id: Number(id),
+          ticket_code: ticketInput,
+        });
+      if (insertError) throw insertError;
+      console.log("Registration inserted");
+
+      Swal.fire({
+        title: "Sukses",
+        text: "Anda telah terdaftar dengan tiket " + ticketInput + "!",
+        icon: "success",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#16A34A",
+      });
+      setShowRegisterModal(false);
+      setIsRegistered(true);
+      setTicketInput("");
+      fetchProgramDetail(); // Refresh data
+    } catch (err) {
+      Swal.fire({
+        title: "Error",
+        text: "Gagal mendaftar: " + (err as Error).message,
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#DC2626",
+      });
+      console.error("Error:", err);
+    }
+  };
+
+  const handleOnlinePayment = () => {
+    Swal.fire({
+      title: "Pembayaran Online",
+      text: "Fitur pembayaran online belum tersedia.",
+      icon: "info",
+      confirmButtonText: "OK",
+      confirmButtonColor: "#16A34A",
+    });
+  };
 
   const handleGroupKonsultasi = () => {
     Swal.fire({
@@ -72,6 +220,28 @@ export default function ProgramDetail() {
       confirmButtonText: "OK",
       confirmButtonColor: "#16A34A",
     });
+  };
+
+  const handleTryoutClick = () => {
+    if (tryouts.length === 0) {
+      Swal.fire({
+        title: "Tidak Ada Tryout",
+        text: "Tidak ada tryout aktif untuk program ini.",
+        icon: "info",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#16A34A",
+      });
+    } else if (!isRegistered) {
+      Swal.fire({
+        title: "Belum Terdaftar",
+        text: "Silakan daftar terlebih dahulu dengan tiket.",
+        icon: "warning",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#DC2626",
+      });
+    } else {
+      router.push(`/program/detail_tryout/${program.id}`);
+    }
   };
 
   if (loading) {
@@ -149,17 +319,18 @@ export default function ProgramDetail() {
           </Link>
         </div>
 
-        <Link href={`/program/try_out/${id}`}>
-          <div className="flex flex-col px-9 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow max-md:px-5">
-            <img
-              loading="lazy"
-              src="/Try Out.svg"
-              alt="Try Out"
-              className="self-center w-12 aspect-square"
-            />
-            <div className="mt-4 text-center">Try Out</div>
-          </div>
-        </Link>
+        <button
+          onClick={handleTryoutClick}
+          className="flex flex-col px-9 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow max-md:px-5"
+        >
+          <img
+            loading="lazy"
+            src="/Try Out.svg"
+            alt="Try Out"
+            className="self-center w-12 aspect-square"
+          />
+          <div className="mt-4 text-center">Try Out</div>
+        </button>
 
         <button
           onClick={handleGroupKonsultasi}
@@ -174,7 +345,7 @@ export default function ProgramDetail() {
           <div className="mt-4 text-center">Group Konsultasi</div>
         </button>
 
-        <Link href={`/program/materi/${id}`}>
+        <Link href={`/program/materi/${program.id}`}>
           <div className="flex flex-col px-9 pt-px pb-4 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow max-md:px-5">
             <img
               loading="lazy"
@@ -199,7 +370,7 @@ export default function ProgramDetail() {
           <div className="mt-3.5 text-center">Party Belajar</div>
         </button>
 
-        <Link href={`/program/agenda/${id}`}>
+        <Link href={`/program/agenda/${program.id}`}>
           <div className="flex flex-col px-5 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow">
             <img
               loading="lazy"
@@ -211,6 +382,61 @@ export default function ProgramDetail() {
           </div>
         </Link>
       </div>
+
+      {console.log("Rendering button, isRegistered:", isRegistered, "tryouts.length:", tryouts.length)}
+      {!isRegistered && tryouts.length > 0 && (
+        <button
+          onClick={handleRegister}
+          className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg shadow-md hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 font-semibold"
+        >
+          Daftar untuk Program
+        </button>
+      )}
+
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Daftar dengan Tiket</h2>
+            <input
+              type="text"
+              value={ticketInput}
+              onChange={(e) => setTicketInput(e.target.value)}
+              placeholder="Masukkan kode tiket (contoh: TICKET001)"
+              className="w-full p-2 mb-4 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={handleTicketRegister}
+              className="w-full py-2 mb-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              Daftar dengan Tiket
+            </button>
+            <button
+              onClick={handleOnlinePayment}
+              className="w-full py-2 mt-2 bg-gray-300 text-black rounded-lg cursor-not-allowed font-medium"
+              disabled
+            >
+              Pembayaran Online (Belum Tersedia)
+            </button>
+            <button
+              onClick={() => setShowRegisterModal(false)}
+              className="mt-4 w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isRegistered && tryouts.length > 0 && (
+        <div className="mt-6 px-5">
+          <button
+            onClick={handleTryoutClick}
+            className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg shadow-md hover:from-green-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 font-semibold"
+          >
+            Mulai Tryout
+          </button>
+        </div>
+      )}
     </div>
   );
 }
