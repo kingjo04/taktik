@@ -7,11 +7,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
+// Definisikan tipe custom untuk JwtPayload berdasarkan struktur token
+interface CustomJwtPayload {
+  sub: string; // User ID standar
+  email?: string; // Opsional, kalau ada
+  [key: string]: any; // Izinkan properti lain kalau ada custom claim
+}
+
 interface Program {
-  id: number; // Ubah dari string ke number karena INTEGER
+  id: number; // INTEGER
   name: string;
   price: number;
-  image_url: string; // Ubah dari image_banner ke image_url sesuai tabel baru
+  image_url: string; // Sesuai tabel
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -35,22 +42,22 @@ export default function Program() {
           return;
         }
 
-        // Decode token untuk ambil user_id (asumsi ada di sub atau custom claim)
+        // Decode token dengan tipe custom
         let decodedToken;
         try {
-          decodedToken = jwtDecode(token);
-          const userId = decodedToken.sub || decodedToken.user.id; // Sesuaikan dengan struktur token
-          if (!userId) throw new Error("User ID tidak ditemukan di token");
-          console.log("Decoded Token - User ID:", userId);
+          decodedToken = jwtDecode<CustomJwtPayload>(token);
+          const userId = decodedToken.sub; // Fokus ke 'sub' sebagai user ID
+          if (!userId) throw new Error("User ID tidak ditemukan di token (sub hilang)");
+          console.log("Decoded Token:", decodedToken); // Debug isi token
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        // Fetch data programs dengan kolom yang sesuai
+        // Fetch data programs
         const { data, error } = await supabase
           .from("programs")
-          .select("id, name, price, image_url") // Pilih kolom yang ada
+          .select("id, name, price, image_url")
           .order("created_at", { ascending: false });
         if (error) {
           console.error("Fetch error:", error.message);
@@ -76,12 +83,12 @@ export default function Program() {
     }
 
     try {
-      const decodedToken = jwtDecode(token);
-      const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan token
+      const decodedToken = jwtDecode<CustomJwtPayload>(token);
+      const userId = decodedToken.sub; // Hanya pakai 'sub'
 
       if (userId) {
         const { error } = await supabase.from("user_activities").insert({
-          user_id: Number(userId), // Konversi ke number karena INTEGER
+          user_id: Number(userId), // Konversi ke number
           program_id: programId,
           activity_type: "view",
           created_at: new Date().toISOString(),
@@ -94,7 +101,7 @@ export default function Program() {
         }
       }
 
-      router.push(`/program/${programId}`); // Arahkan ke detail
+      router.push(`/program/${programId}`);
     } catch (err) {
       console.error("Error handling program click:", err);
     }
