@@ -11,16 +11,14 @@ import { jwtDecode } from "jwt-decode";
 
 // Definisikan tipe kustom untuk JwtPayload
 interface CustomJwtPayload {
-  sub: string; // Biasanya user_id
+  sub: string;
   user?: {
-    id?: number; // Ubah ke number dari string/number
-    // Tambahin properti lain kalau ada di token lu (misal name, email, dll.)
+    id?: number;
   };
-  // Tambahin properti lain kalau ada di token lu
 }
 
 interface ProgramDetail {
-  id: number; // Ubah ke number dari UUID
+  id: number;
   name: string;
   description: string;
   duration: string;
@@ -29,7 +27,7 @@ interface ProgramDetail {
 }
 
 interface Tryout {
-  id: number; // Ubah ke number dari UUID
+  id: number;
   name: string;
   is_active: boolean;
 }
@@ -63,25 +61,44 @@ export default function ProgramDetail() {
       const programId = Number(id);
       if (isNaN(programId)) throw new Error("ID program tidak valid");
 
-      const { data: programData, error: programError } = await supabase
-        .from("programs")
-        .select("id, name, description, duration, price, image_url")
-        .eq("id", programId)
-        .single();
-      if (programError) throw programError;
-      setProgram(programData as ProgramDetail);
+      // Simulasi data dummy untuk testing
+      if (process.env.NODE_ENV === "development") {
+        const dummyProgram: ProgramDetail = {
+          id: programId,
+          name: `Program Pelatihan ${programId}`,
+          description: "Pelatihan intensif untuk meningkatkan skill Anda dengan metode terbaru.",
+          duration: "3 Bulan",
+          price: 500000,
+          image_url: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=2070&auto=format&fit=crop",
+        };
+        setProgram(dummyProgram);
 
-      const { data: tryoutData, error: tryoutError } = await supabase
-        .from("tryouts")
-        .select("id, name, is_active")
-        .eq("program_id", programId)
-        .eq("is_active", true)
-        .order("id", { ascending: true });
-      if (tryoutError) throw tryoutError;
-      setTryouts(tryoutData as Tryout[]);
+        const dummyTryouts: Tryout[] = [
+          { id: 1, name: "Tryout Matematika", is_active: true },
+          { id: 2, name: "Tryout Bahasa Inggris", is_active: false },
+        ];
+        setTryouts(dummyTryouts);
+      } else {
+        const { data: programData, error: programError } = await supabase
+          .from("programs")
+          .select("id, name, description, duration, price, image_url")
+          .eq("id", programId)
+          .single();
+        if (programError) throw programError;
+        setProgram(programData as ProgramDetail);
+
+        const { data: tryoutData, error: tryoutError } = await supabase
+          .from("tryouts")
+          .select("id, name, is_active")
+          .eq("program_id", programId)
+          .eq("is_active", true)
+          .order("id", { ascending: true });
+        if (tryoutError) throw tryoutError;
+        setTryouts(tryoutData as Tryout[]);
+      }
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id); // Ubah ke number
+      const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id);
       console.log("Decoded User ID:", userId);
       if (userId) {
         const { data: registration } = await supabase
@@ -118,7 +135,6 @@ export default function ProgramDetail() {
   }, [id]);
 
   const handleRegister = () => {
-    console.log("Opening register modal, isRegistered:", isRegistered);
     if (!isRegistered) setShowRegisterModal(true);
   };
 
@@ -129,7 +145,7 @@ export default function ProgramDetail() {
       return;
     }
     const decodedToken = jwtDecode<CustomJwtPayload>(token);
-    const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id); // Ubah ke number
+    const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id);
     if (!userId || !ticketInput) {
       Swal.fire({
         title: "Error",
@@ -142,8 +158,7 @@ export default function ProgramDetail() {
     }
 
     try {
-      const programId = Number(id); // Tambahin deklarasi programId di sini
-      console.log("Checking ticket:", ticketInput, "for program:", programId);
+      const programId = Number(id);
       const { data, error } = await supabase
         .from("tickets_available")
         .select("id, program_id")
@@ -160,7 +175,6 @@ export default function ProgramDetail() {
         });
         return;
       }
-      console.log("Ticket found:", data);
 
       const { error: deleteError } = await supabase
         .from("tickets_available")
@@ -168,7 +182,6 @@ export default function ProgramDetail() {
         .eq("ticket_code", ticketInput)
         .eq("program_id", programId);
       if (deleteError) throw deleteError;
-      console.log("Ticket deleted from available");
 
       const { error: insertError } = await supabase
         .from("user_registrations")
@@ -178,7 +191,6 @@ export default function ProgramDetail() {
           ticket_code: ticketInput,
         });
       if (insertError) throw insertError;
-      console.log("Registration inserted");
 
       Swal.fire({
         title: "Sukses",
@@ -190,7 +202,7 @@ export default function ProgramDetail() {
       setShowRegisterModal(false);
       setIsRegistered(true);
       setTicketInput("");
-      fetchProgramDetail(); // Refresh data
+      fetchProgramDetail();
     } catch (err) {
       Swal.fire({
         title: "Error",
@@ -263,10 +275,10 @@ export default function ProgramDetail() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50">
-        <div className="flex items-center gap-2 text-indigo-600 animate-pulse">
-          <div className="w-6 h-6 border-4 border-t-indigo-600 border-b-transparent rounded-full animate-spin"></div>
-          <span className="text-xl">Memuat Detail Program...</span>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100">
+        <div className="flex items-center gap-3 text-indigo-700 animate-pulse">
+          <div className="w-8 h-8 border-4 border-t-indigo-700 border-b-transparent rounded-full animate-spin"></div>
+          <span className="text-2xl font-semibold">Memuat Detail Program...</span>
         </div>
       </div>
     );
@@ -274,15 +286,15 @@ export default function ProgramDetail() {
 
   if (error || !program) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 p-4 sm:p-6 ml-[64px]">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
         <div className="text-center">
-          <p className="text-red-500 text-lg mb-4">{error || "Program tidak ditemukan"}</p>
+          <p className="text-red-600 text-xl mb-6">{error || "Program tidak ditemukan"}</p>
           <button
             onClick={fetchProgramDetail}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-300"
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
           >
-            <FontAwesomeIcon icon={faRotateRight} className="w-4 h-4" />
-            <span>Coba Lagi</span>
+            <FontAwesomeIcon icon={faRotateRight} className="w-5 h-5" />
+            <span className="font-medium">Coba Lagi</span>
           </button>
         </div>
       </div>
@@ -290,112 +302,87 @@ export default function ProgramDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 p-4 sm:p-6 ml-[64px] animate-fade-in">
-      <div className="flex items-center">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px] animate-fade-in">
+      <div className="flex items-center mb-6">
         <button
           type="button"
-          className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300"
+          className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-110"
           onClick={() => router.back()}
         >
-          <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5 text-indigo-600" />
+          <FontAwesomeIcon icon={faArrowLeft} className="w-6 h-6 text-indigo-700" />
         </button>
-        <h1 className="ml-4 text-2xl sm:text-3xl font-bold text-indigo-800">Program Detail</h1>
+        <h1 className="ml-6 text-3xl sm:text-4xl font-bold text-indigo-900 bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent animate-pulse-once">
+          Detail Program
+        </h1>
       </div>
 
-      <div className="flex gap-5 my-5 items-end pt-20 pb-6 text-2xl font-semibold text-white bg-gradient-to-r from-blue-700 to-indigo-700 rounded-3xl max-md:flex-wrap">
-        <div className="shrink-0 mt-20 bg-yellow-300 h-[46px] w-[5px] max-md:mt-10" />
-        <div className="flex-auto mt-24 max-md:mt-10 max-md:max-w-full">{program.name}</div>
+      <div
+        className="relative w-full h-64 sm:h-80 bg-cover bg-center rounded-2xl shadow-2xl mb-8"
+        style={{ backgroundImage: `url(${program.image_url})` }}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl flex items-center justify-center">
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg animate-fade-in">
+            {program.name}
+          </h2>
+        </div>
       </div>
 
-      <div className="flex flex-col px-5 text-xl font-medium text-black max-w-[878px]">
-        <div className="w-full max-md:max-w-full">Deskripsi</div>
-        <div className="mt-2 w-full text-base max-md:max-w-full">
+      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-8">
+        <h3 className="text-2xl font-semibold text-indigo-800 mb-4">Deskripsi</h3>
+        <p className="text-gray-700 text-base sm:text-lg leading-relaxed">
           {program.description}
           <br />
           <br />
-          Durasi Pendampingan: {program.duration}
-          <br />
+          <span className="font-medium">Durasi Pendampingan:</span> {program.duration}
+        </p>
+        <div className="mt-6">
+          <h3 className="text-2xl font-semibold text-indigo-800 mb-2">Informasi</h3>
+          <p className="text-gray-700 text-lg">
+            Harga: <span className="font-bold text-indigo-600">Rp {program.price.toLocaleString("id-ID")}</span>
+          </p>
         </div>
-        <div className="mt-10 w-full max-md:max-w-full">Informasi</div>
-        <div className="mt-3.5 w-full text-base max-md:max-w-full">
-          Harga Rp. {program.price.toLocaleString("id-ID")}
-        </div>
-        <div className="mt-10 w-full max-md:mt-10 max-md:max-w-full">Menu</div>
       </div>
 
-      <div className="flex gap-5 justify-between px-5 text-base text-black max-md:flex-wrap mt-6">
-        <div className="flex flex-col p-3.5 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow">
-          <img
-            loading="lazy"
-            src="/Passing Grade.svg"
-            alt="Passing Grade"
-            className="self-center w-12 aspect-[1.18]"
-          />
-          <Link href="/universitas">
-            <div className="mt-5 text-center">Passing Grade</div>
-          </Link>
-        </div>
-
-        <button
-          onClick={handleTryoutClick}
-          className="flex flex-col px-9 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow max-md:px-5"
-        >
-          <img
-            loading="lazy"
-            src="/Try Out.svg"
-            alt="Try Out"
-            className="self-center w-12 aspect-square"
-          />
-          <div className="mt-4 text-center">Try Out</div>
-        </button>
-
-        <button
-          onClick={handleGroupKonsultasi}
-          className="flex flex-col px-1.5 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow"
-        >
-          <img
-            loading="lazy"
-            src="/Group Konsultasi.svg"
-            alt="Group Konsultasi"
-            className="self-center aspect-[1.12] w-[53px]"
-          />
-          <div className="mt-4 text-center">Group Konsultasi</div>
-        </button>
-
-        <Link href={`/program/materi/${program.id}`}>
-          <div className="flex flex-col px-9 pt-px pb-4 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow max-md:px-5">
-            <img
-              loading="lazy"
-              src="/Materi.svg"
-              alt="Materi"
-              className="self-center w-12 aspect-[0.76]"
-            />
-            <div className="mt-2 text-center">Materi</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 mb-8">
+        <Link href="/universitas" className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Passing Grade.svg" alt="Passing Grade" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Passing Grade</p>
           </div>
         </Link>
 
-        <button
-          onClick={handlePartyBelajar}
-          className="flex flex-col px-5 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow"
-        >
-          <img
-            loading="lazy"
-            src="/Party Belajar.svg"
-            alt="Party Belajar"
-            className="self-center aspect-[1.12] w-[54px]"
-          />
-          <div className="mt-3.5 text-center">Party Belajar</div>
+        <button onClick={handleTryoutClick} className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Try Out.svg" alt="Try Out" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Try Out</p>
+          </div>
         </button>
 
-        <Link href={`/program/agenda/${program.id}`}>
-          <div className="flex flex-col px-5 py-3 bg-white rounded-2xl border border-stone-300 shadow-md hover:shadow-lg transition-shadow">
-            <img
-              loading="lazy"
-              src="/Jadwal Pendampingan.svg"
-              alt="Jadwal Pendampingan"
-              className="self-center aspect-[1.12] w-[54px]"
-            />
-            <div className="mt-3.5 text-center text-wrap">Jadwal Pendampingan</div>
+        <button onClick={handleGroupKonsultasi} className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Group Konsultasi.svg" alt="Group Konsultasi" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Group Konsultasi</p>
+          </div>
+        </button>
+
+        <Link href={`/program/materi/${program.id}`} className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Materi.svg" alt="Materi" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Materi</p>
+          </div>
+        </Link>
+
+        <button onClick={handlePartyBelajar} className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Party Belajar.svg" alt="Party Belajar" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Party Belajar</p>
+          </div>
+        </button>
+
+        <Link href={`/program/agenda/${program.id}`} className="menu-card">
+          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <img src="/Jadwal Pendampingan.svg" alt="Jadwal Pendampingan" className="w-16 h-16 mx-auto mb-4" />
+            <p className="text-center text-gray-800 font-medium">Jadwal Pendampingan</p>
           </div>
         </Link>
       </div>
@@ -403,39 +390,39 @@ export default function ProgramDetail() {
       {!isRegistered && tryouts.length > 0 && (
         <button
           onClick={handleRegister}
-          className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg shadow-md hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 font-semibold"
+          className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl shadow-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 transform hover:scale-105 font-bold text-lg mb-6"
         >
-          Daftar untuk Program
+          Daftar Sekarang
         </button>
       )}
 
       {showRegisterModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Daftar dengan Tiket</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 hover:shadow-3xl">
+            <h2 className="text-2xl font-bold text-indigo-800 mb-6">Daftar dengan Tiket</h2>
             <input
               type="text"
               value={ticketInput}
               onChange={(e) => setTicketInput(e.target.value)}
               placeholder="Masukkan kode tiket (contoh: TICKET001)"
-              className="w-full p-2 mb-4 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
               onClick={handleTicketRegister}
-              className="w-full py-2 mb-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              className="w-full py-3 mb-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
             >
               Daftar dengan Tiket
             </button>
             <button
               onClick={handleOnlinePayment}
-              className="w-full py-2 mt-2 bg-gray-300 text-black rounded-lg cursor-not-allowed font-medium"
+              className="w-full py-3 bg-gray-300 text-black rounded-lg hover:bg-gray-400 transition-colors font-semibold"
               disabled
             >
               Pembayaran Online (Belum Tersedia)
             </button>
             <button
               onClick={() => setShowRegisterModal(false)}
-              className="mt-4 w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              className="mt-4 w-full py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
             >
               Batal
             </button>
@@ -444,10 +431,10 @@ export default function ProgramDetail() {
       )}
 
       {isRegistered && tryouts.length > 0 && (
-        <div className="mt-6 px-5">
+        <div className="mt-6">
           <button
             onClick={handleTryoutClick}
-            className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg shadow-md hover:from-green-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 font-semibold"
+            className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-xl shadow-lg hover:from-green-700 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 font-bold text-lg"
           >
             Mulai Tryout
           </button>
@@ -456,3 +443,27 @@ export default function ProgramDetail() {
     </div>
   );
 }
+
+/* CSS Animations */
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  @keyframes pulseOnce {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .animate-pulse-once {
+    animation: pulseOnce 1.5s ease-in-out;
+  }
+  .menu-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .menu-card:hover {
+    transform: translateY(-5px);
+  }
+</style>
