@@ -8,10 +8,10 @@ import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
 interface Program {
-  id: number; // Ubah dari string ke number karena INTEGER
+  id: number;
   name: string;
   price: number;
-  image_url: string; // Ubah dari image_banner ke image_url sesuai tabel baru
+  image_url: string;
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -35,11 +35,16 @@ export default function Program() {
           return;
         }
 
-        // Decode token untuk ambil user_id (asumsi ada di sub)
         let decodedToken;
+        let userId;
         try {
           decodedToken = jwtDecode(token);
-          const userId = decodedToken.sub ? Number(decodedToken.sub) : undefined; // Ambil dari sub dan konversi ke number
+          // Coba ambil dari sub, kalau ada, konversi ke integer
+          userId = decodedToken.sub ? parseInt(decodedToken.sub, 10) : undefined;
+          // Kalau sub gagal atau undefined, cek custom claim (misal 'user_id')
+          if (!userId && decodedToken.user_id) {
+            userId = parseInt(decodedToken.user_id, 10);
+          }
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
@@ -47,10 +52,9 @@ export default function Program() {
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        // Fetch data programs dengan kolom yang sesuai
         const { data, error } = await supabase
           .from("programs")
-          .select("id, name, price, image_url") // Pilih kolom yang ada
+          .select("id, name, price, image_url")
           .order("created_at", { ascending: false });
         if (error) {
           console.error("Fetch error:", error.message);
@@ -77,24 +81,28 @@ export default function Program() {
 
     try {
       const decodedToken = jwtDecode(token);
-      const userId = decodedToken.sub ? Number(decodedToken.sub) : undefined; // Ambil dari sub dan konversi ke number
+      let userId;
+      // Coba ambil dari sub atau custom claim 'user_id'
+      userId = decodedToken.sub ? parseInt(decodedToken.sub, 10) : undefined;
+      if (!userId && decodedToken.user_id) {
+        userId = parseInt(decodedToken.user_id, 10);
+      }
+      if (!userId) throw new Error("User ID tidak ditemukan di token");
 
-      if (userId) {
-        const { error } = await supabase.from("user_activities").insert({
-          user_id: userId, // Pake userId yang udah dikonversi
-          program_id: programId,
-          activity_type: "view",
-          created_at: new Date().toISOString(),
-        });
+      const { error } = await supabase.from("user_activities").insert({
+        user_id: userId,
+        program_id: programId,
+        activity_type: "view",
+        created_at: new Date().toISOString(),
+      });
 
-        if (error) {
-          console.error("Error saving activity:", error.message);
-        } else {
-          console.log("Activity saved for user:", userId, "program:", programId);
-        }
+      if (error) {
+        console.error("Error saving activity:", error.message);
+      } else {
+        console.log("Activity saved for user:", userId, "program:", programId);
       }
 
-      router.push(`/program/${programId}`); // Arahkan ke detail
+      router.push(`/program/${programId}`);
     } catch (err) {
       console.error("Error handling program click:", err);
     }
