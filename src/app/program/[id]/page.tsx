@@ -249,8 +249,16 @@ export default function ProgramDetail() {
         confirmButtonText: "OK",
         confirmButtonColor: "#DC2626",
       });
-    } else {
+    } else if (program) { // Tambahin pengecekan program
       router.push(`/program/detail_tryout/${program.id}`);
+    } else {
+      Swal.fire({
+        title: "Error",
+        text: "Data program tidak tersedia.",
+        icon: "error",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#DC2626",
+      });
     }
   };
 
