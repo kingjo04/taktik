@@ -13,14 +13,14 @@ import { jwtDecode } from "jwt-decode";
 interface CustomJwtPayload {
   sub: string; // Biasanya user_id
   user?: {
-    id?: string | number;
+    id?: number; // Ubah ke number dari string/number
     // Tambahin properti lain kalau ada di token lu (misal name, email, dll.)
   };
   // Tambahin properti lain kalau ada di token lu
 }
 
 interface ProgramDetail {
-  id: number;
+  id: number; // Ubah ke number dari UUID
   name: string;
   description: string;
   duration: string;
@@ -29,7 +29,7 @@ interface ProgramDetail {
 }
 
 interface Tryout {
-  id: number;
+  id: number; // Ubah ke number dari UUID
   name: string;
   is_active: boolean;
 }
@@ -81,20 +81,20 @@ export default function ProgramDetail() {
       setTryouts(tryoutData as Tryout[]);
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      const userId = decodedToken.sub || decodedToken.user?.id;
+      const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id); // Ubah ke number
       console.log("Decoded User ID:", userId);
       if (userId) {
         const { data: registration } = await supabase
           .from("user_registrations")
           .select("id")
-          .eq("user_id", Number(userId))
+          .eq("user_id", userId)
           .eq("program_id", programId)
           .limit(1);
         setIsRegistered(!!registration?.length);
         console.log("Is Registered:", !!registration?.length);
 
         const { error: activityError } = await supabase.from("user_activities").insert({
-          user_id: Number(userId),
+          user_id: userId,
           program_id: programId,
           activity_type: "view",
           created_at: new Date().toISOString(),
@@ -129,7 +129,7 @@ export default function ProgramDetail() {
       return;
     }
     const decodedToken = jwtDecode<CustomJwtPayload>(token);
-    const userId = decodedToken.sub || decodedToken.user?.id;
+    const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id); // Ubah ke number
     if (!userId || !ticketInput) {
       Swal.fire({
         title: "Error",
@@ -147,7 +147,7 @@ export default function ProgramDetail() {
         .from("tickets_available")
         .select("id, program_id")
         .eq("ticket_code", ticketInput)
-        .eq("program_id", Number(id))
+        .eq("program_id", programId)
         .single();
       if (error || !data) {
         Swal.fire({
@@ -165,15 +165,15 @@ export default function ProgramDetail() {
         .from("tickets_available")
         .delete()
         .eq("ticket_code", ticketInput)
-        .eq("program_id", Number(id));
+        .eq("program_id", programId);
       if (deleteError) throw deleteError;
       console.log("Ticket deleted from available");
 
       const { error: insertError } = await supabase
         .from("user_registrations")
         .insert({
-          user_id: Number(userId),
-          program_id: Number(id),
+          user_id: userId,
+          program_id: programId,
           ticket_code: ticketInput,
         });
       if (insertError) throw insertError;
