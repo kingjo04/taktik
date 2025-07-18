@@ -7,11 +7,25 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
+// Tipe untuk data program
 interface Program {
-  id: number; // Ubah dari string ke number karena INTEGER
+  id: number;
   name: string;
   price: number;
-  image_url: string; // Ubah dari image_banner ke image_url sesuai tabel baru
+  image_url: string;
+}
+
+// Tipe aman untuk JWT Token
+interface CustomJwtPayload {
+  sub?: string;
+  user?: {
+    id: number;
+    name?: string;
+    username?: string;
+    email?: string;
+  };
+  iat?: number;
+  exp?: number;
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -35,11 +49,11 @@ export default function Program() {
           return;
         }
 
-        // Decode token untuk ambil user_id (asumsi ada di sub atau custom claim)
-        let decodedToken;
+        // ✅ Decode token dengan tipe
+        let decodedToken: CustomJwtPayload;
         try {
-          decodedToken = jwtDecode(token);
-          const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan struktur token
+          decodedToken = jwtDecode<CustomJwtPayload>(token);
+          const userId = decodedToken.sub || decodedToken.user?.id;
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
@@ -47,19 +61,15 @@ export default function Program() {
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        // Fetch data programs dengan kolom yang sesuai
         const { data, error } = await supabase
           .from("programs")
-          .select("id, name, price, image_url") // Pilih kolom yang ada
+          .select("id, name, price, image_url")
           .order("created_at", { ascending: false });
-        if (error) {
-          console.error("Fetch error:", error.message);
-          throw new Error("Gagal mengambil data program: " + error.message);
-        }
+
+        if (error) throw new Error("Gagal mengambil data program: " + error.message);
         setPrograms(data as Program[]);
       } catch (err) {
-        setError("Gagal memuat program. Coba lagi nanti: " + (err as Error).message);
-        console.error("Error in fetchPrograms:", err);
+        setError("Gagal memuat program: " + (err as Error).message);
       } finally {
         setLoading(false);
       }
@@ -76,12 +86,12 @@ export default function Program() {
     }
 
     try {
-      const decodedToken = jwtDecode(token);
-      const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan token
+      const decodedToken = jwtDecode<CustomJwtPayload>(token);
+      const userId = decodedToken.sub || decodedToken.user?.id;
 
       if (userId) {
         const { error } = await supabase.from("user_activities").insert({
-          user_id: Number(userId), // Konversi ke number karena INTEGER
+          user_id: Number(userId),
           program_id: programId,
           activity_type: "view",
           created_at: new Date().toISOString(),
@@ -94,17 +104,17 @@ export default function Program() {
         }
       }
 
-      router.push(`/program/${programId}`); // Arahkan ke detail
+      router.push(`/program/${programId}`);
     } catch (err) {
       console.error("Error handling program click:", err);
     }
   };
 
   const educationImages = [
-    "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2089&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "https://images.unsplash.com/photo-1457369804613-52c61a468e7d",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+    "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f",
+    "https://images.unsplash.com/photo-1503676260728-1c00da094a0b",
   ];
 
   if (loading) {
@@ -170,9 +180,7 @@ export default function Program() {
                   </div>
                 </div>
                 <div className="p-2 sm:p-4">
-                  <p className="text-gray-600 text-xs sm:text-sm">
-                    Klik untuk detail program
-                  </p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Klik untuk detail program</p>
                 </div>
               </div>
             );
