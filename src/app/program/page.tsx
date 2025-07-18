@@ -35,11 +35,11 @@ export default function Program() {
           return;
         }
 
-        // Decode token untuk ambil user_id (asumsi ada di sub atau custom claim)
+        // Decode token untuk ambil user_id (asumsi ada di sub)
         let decodedToken;
         try {
           decodedToken = jwtDecode(token);
-          const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan struktur token
+          const userId = decodedToken.sub ? Number(decodedToken.sub) : undefined; // Ambil dari sub dan konversi ke number
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
@@ -77,11 +77,11 @@ export default function Program() {
 
     try {
       const decodedToken = jwtDecode(token);
-      const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan token
+      const userId = decodedToken.sub ? Number(decodedToken.sub) : undefined; // Ambil dari sub dan konversi ke number
 
       if (userId) {
         const { error } = await supabase.from("user_activities").insert({
-          user_id: Number(userId), // Konversi ke number karena INTEGER
+          user_id: userId, // Pake userId yang udah dikonversi
           program_id: programId,
           activity_type: "view",
           created_at: new Date().toISOString(),
