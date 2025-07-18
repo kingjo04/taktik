@@ -79,7 +79,6 @@ export default function ProgramDetail() {
         .order("id", { ascending: true });
       if (tryoutError) throw tryoutError;
       setTryouts(tryoutData as Tryout[]);
-      console.log("Tryouts fetched:", tryoutData);
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
       const userId = decodedToken.sub || decodedToken.user?.id;
@@ -162,7 +161,6 @@ export default function ProgramDetail() {
       }
       console.log("Ticket found:", data);
 
-      // Manual insert tanpa stored procedure
       const { error: deleteError } = await supabase
         .from("tickets_available")
         .delete()
@@ -249,7 +247,7 @@ export default function ProgramDetail() {
         confirmButtonText: "OK",
         confirmButtonColor: "#DC2626",
       });
-    } else if (program) { // Tambahin pengecekan program
+    } else if (program) {
       router.push(`/program/detail_tryout/${program.id}`);
     } else {
       Swal.fire({
@@ -401,7 +399,6 @@ export default function ProgramDetail() {
         </Link>
       </div>
 
-      {console.log("Rendering button, isRegistered:", isRegistered, "tryouts.length:", tryouts.length)}
       {!isRegistered && tryouts.length > 0 && (
         <button
           onClick={handleRegister}
