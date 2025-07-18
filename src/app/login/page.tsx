@@ -1,16 +1,11 @@
 "use client";
+
 import { useState, ChangeEvent, FormEvent } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { createClient } from "@supabase/supabase-js";
-import { jwtDecode } from "jwt-decode";
-
-const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlla25waGR1bGV5bmh1aWFxc3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTY4ODAsImV4cCI6MjA2ODA5Mjg4MH0.iZBnS3uGs68CmqrhQYAJdCZZGRqlKEThrm0B0FqyPVs";
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -38,25 +33,9 @@ export default function LoginPage() {
       if (data.token) {
         // Simpan ke localStorage
         localStorage.setItem("token", data.token);
-        localStorage.setItem("name", data.user.name || "");
-        localStorage.setItem("photo_profile", data.user.photo_profile || "");
-        localStorage.setItem("email", data.user.email || "");
-
-        // Decode token untuk dapat user_id
-        const decodedToken = jwtDecode(data.token);
-        const userId = decodedToken.sub || decodedToken.user?.id;
-        if (userId) {
-          // Sinkronkan user ke Supabase
-          const { error } = await supabase.from("users").upsert(
-            {
-              id: Number(userId),
-              email: data.user.email,
-              name: data.user.name,
-            },
-            { onConflict: ["id"] } // Update kalau udah ada
-          );
-          if (error) throw error;
-        }
+        localStorage.setItem("name", data.user?.name || "");
+        localStorage.setItem("photo_profile", data.user?.photo_profile || "");
+        localStorage.setItem("email", data.user?.email || "");
 
         Swal.fire({
           title: "Login Berhasil!",
@@ -74,7 +53,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error("Error logging in:", error);
-      setErrors("Token Tidak Valid. Silahkan login kembali.");
+      setErrors("Email atau password salah. Silakan coba lagi.");
     }
   };
 
