@@ -9,6 +9,16 @@ import Link from "next/link";
 import Swal from "sweetalert2";
 import { jwtDecode } from "jwt-decode";
 
+// Definisikan tipe kustom untuk JwtPayload
+interface CustomJwtPayload {
+  sub: string; // Biasanya user_id
+  user?: {
+    id?: string | number;
+    // Tambahin properti lain kalau ada di token lu (misal name, email, dll.)
+  };
+  // Tambahin properti lain kalau ada di token lu
+}
+
 interface ProgramDetail {
   id: number;
   name: string;
@@ -71,7 +81,7 @@ export default function ProgramDetail() {
       setTryouts(tryoutData as Tryout[]);
       console.log("Tryouts fetched:", tryoutData);
 
-      const decodedToken = jwtDecode(token);
+      const decodedToken = jwtDecode<CustomJwtPayload>(token);
       const userId = decodedToken.sub || decodedToken.user?.id;
       console.log("Decoded User ID:", userId);
       if (userId) {
@@ -119,7 +129,7 @@ export default function ProgramDetail() {
       router.push("/login");
       return;
     }
-    const decodedToken = jwtDecode(token);
+    const decodedToken = jwtDecode<CustomJwtPayload>(token);
     const userId = decodedToken.sub || decodedToken.user?.id;
     if (!userId || !ticketInput) {
       Swal.fire({
