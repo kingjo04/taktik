@@ -37,6 +37,10 @@ interface Question {
   correct_answer: string;
 }
 
+interface AttemptData {
+  attempt_number: number;
+}
+
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlla25waGR1bGV5bmh1aWFxc3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTY4ODAsImV4cCI6MjA2ODA5Mjg4MH0.iZBnS3uGs68CmqrhQYAJdCZZGRqlKEThrm0B0FqyPVs";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -78,7 +82,7 @@ export default function KerjakanTryout() {
         .eq("tryout_id", tryoutId)
         .order("id", { ascending: true });
       if (questionError) throw questionError;
-      setQuestions(questionData);
+      setQuestions(questionData || []); // Pastikan tidak undefined
     } catch (err) {
       console.error("Error fetching tryout or questions:", err);
       Swal.fire({
@@ -133,7 +137,9 @@ export default function KerjakanTryout() {
   };
 
   const handleGoToQuestion = (index: number) => {
-    setCurrentQuestion(index);
+    if (index >= 0 && index < questions.length) {
+      setCurrentQuestion(index);
+    }
   };
 
   const handleSubmit = async () => {
@@ -165,19 +171,20 @@ export default function KerjakanTryout() {
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
       const userId = decodedToken.user.id;
-      console.log("Decoded Token in Submit:", decodedToken);
       if (!userId || isNaN(userId)) throw new Error("User ID tidak ditemukan atau tidak valid dari token");
 
       const tryoutId = Number(id);
 
-      const { data: attemptData } = await supabase
+      const { data: attemptData, error: attemptError } = await supabase
         .from("user_tryout_results")
         .select("attempt_number")
         .eq("user_id", userId)
         .eq("tryout_id", tryoutId)
         .order("attempt_number", { ascending: false })
         .limit(1);
-      const nextAttempt = attemptData.length > 0 ? attemptData[0].attempt_number + 1 : 1;
+      if (attemptError) throw attemptError;
+
+      const nextAttempt = attemptData && attemptData.length > 0 ? attemptData[0].attempt_number + 1 : 1;
 
       const validAnswers = questions.map((q) => ({
         user_id: userId,
@@ -239,7 +246,7 @@ export default function KerjakanTryout() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-100">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="flex items-center gap-3 text-indigo-700 animate-pulse">
           <div className="w-10 h-10 border-4 border-t-indigo-700 border-b-transparent rounded-full animate-spin"></div>
           <span className="text-2xl font-semibold">Memuat Tryout...</span>
@@ -250,7 +257,7 @@ export default function KerjakanTryout() {
 
   if (!tryout || questions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-100">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
           <span className="text-xl text-red-600 font-semibold">Tryout atau soal tidak ditemukan</span>
           <button
@@ -264,13 +271,13 @@ export default function KerjakanTryout() {
     );
   }
 
-  const currentQuestionData = questions[currentQuestion];
+  const currentQuestionData = questions[currentQuestion] || ({} as Question); // Pastikan aman jika kosong
   const selectedAnswer = answers[currentQuestionData.id];
   const progress = (Object.keys(answers).length / (tryout.total_questions || 1)) * 100;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-100 p-2 sm:p-4 md:p-6 lg:p-8 ml-16 lg:ml-64">
-      <main className="flex-1 mx-auto max-w-4xl w-full bg-white p-4 sm:p-6 md:p-8 rounded-xl shadow-lg"> {/* Latar belakang putih penuh */}
+    <div className="flex min-h-screen bg-white p-2 sm:p-4 md:p-6 lg:p-8 ml-16 lg:ml-64">
+      <main className="flex-1 mx-auto max-w-4xl w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 animate-fadeIn">
           <button
@@ -316,7 +323,7 @@ export default function KerjakanTryout() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             {["A", "B", "C", "D"].map((option) => {
-              const optionText = currentQuestionData[`option_${option.toLowerCase()}`];
+              const optionText = currentQuestionData[`option_${option.toLowerCase()}` as keyof Question] || "";
               return (
                 <button
                   key={option}
@@ -348,7 +355,7 @@ export default function KerjakanTryout() {
                 className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full text-xs sm:text-sm md:text-base font-medium transition-all ${
                   index === currentQuestion
                     ? "bg-blue-600 text-white"
-                    : answers[index]
+                    : answers[questions[index]?.id || index]
                     ? "bg-green-500 text-white"
                     : "bg-gray-300 hover:bg-gray-400"
                 }`}
