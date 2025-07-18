@@ -142,7 +142,8 @@ export default function ProgramDetail() {
     }
 
     try {
-      console.log("Checking ticket:", ticketInput, "for program:", id);
+      const programId = Number(id); // Tambahin deklarasi programId di sini
+      console.log("Checking ticket:", ticketInput, "for program:", programId);
       const { data, error } = await supabase
         .from("tickets_available")
         .select("id, program_id")
