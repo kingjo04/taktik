@@ -1,5 +1,31 @@
 "use client";
 
+// Tambahin type custom buat JWT Payload
+interface CustomJwtPayload {
+  user: {
+    id: number;
+    name: string;
+    username: string;
+    email: string;
+    photo_profile: string | null;
+    role_id: number;
+    gender: string | null;
+    phone_number: string | null;
+    birth_date: string | null;
+    google_id: string | null;
+    fcm_token: string | null;
+    is_verified: boolean;
+    school: string | null;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+    province_id: number | null;
+    role: { id: number; category: string; name: string };
+    province: string | null;
+  };
+  iat: number;
+}
+
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
@@ -38,13 +64,9 @@ export default function Program() {
         let decodedToken;
         let userId;
         try {
-          decodedToken = jwtDecode(token);
-          // Coba ambil dari sub, kalau ada, konversi ke integer
-          userId = decodedToken.sub ? parseInt(decodedToken.sub, 10) : undefined;
-          // Kalau sub gagal atau undefined, cek custom claim (misal 'user_id')
-          if (!userId && decodedToken.user_id) {
-            userId = parseInt(decodedToken.user_id, 10);
-          }
+          decodedToken = jwtDecode<CustomJwtPayload>(token); // Pakai type custom
+          // Ambil user_id dari user.id
+          userId = decodedToken.user ? decodedToken.user.id : undefined;
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
@@ -80,13 +102,8 @@ export default function Program() {
     }
 
     try {
-      const decodedToken = jwtDecode(token);
-      let userId;
-      // Coba ambil dari sub atau custom claim 'user_id'
-      userId = decodedToken.sub ? parseInt(decodedToken.sub, 10) : undefined;
-      if (!userId && decodedToken.user_id) {
-        userId = parseInt(decodedToken.user_id, 10);
-      }
+      const decodedToken = jwtDecode<CustomJwtPayload>(token);
+      let userId = decodedToken.user ? decodedToken.user.id : undefined;
       if (!userId) throw new Error("User ID tidak ditemukan di token");
 
       const { error } = await supabase.from("user_activities").insert({
