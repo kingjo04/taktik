@@ -7,11 +7,37 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
-// Definisikan tipe custom untuk JwtPayload berdasarkan struktur token
+// Definisikan tipe custom untuk JwtPayload berdasarkan struktur tokenmu
+interface UserPayload {
+  id: number;
+  name: string;
+  username: string;
+  email: string;
+  photo_profile: string | null;
+  role_id: number;
+  gender: string | null;
+  phone_number: string | null;
+  birth_date: string | null;
+  google_id: string | null;
+  fcm_token: string | null;
+  is_verified: boolean;
+  school: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  province_id: number | null;
+  role: {
+    id: number;
+    category: string;
+    name: string;
+  };
+  province: string | null;
+}
+
 interface CustomJwtPayload {
-  sub: string; // User ID standar
-  email?: string; // Opsional, kalau ada
-  [key: string]: any; // Izinkan properti lain kalau ada custom claim
+  user: UserPayload; // Objek user sebagai payload utama
+  iat: number; // Issued at time
+  [key: string]: any; // Izinkan properti lain kalau ada
 }
 
 interface Program {
@@ -46,9 +72,9 @@ export default function Program() {
         let decodedToken;
         try {
           decodedToken = jwtDecode<CustomJwtPayload>(token);
-          const userId = decodedToken.sub; // Fokus ke 'sub' sebagai user ID
-          if (!userId) throw new Error("User ID tidak ditemukan di token (sub hilang)");
-          console.log("Decoded Token:", decodedToken); // Debug isi token
+          const userId = decodedToken.user?.id; // Ambil dari user.id
+          if (!userId) throw new Error("User ID tidak ditemukan di token (user.id hilang)");
+          console.log("Decoded Token - User ID:", userId); // Debug
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
@@ -84,7 +110,7 @@ export default function Program() {
 
     try {
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      const userId = decodedToken.sub; // Hanya pakai 'sub'
+      const userId = decodedToken.user?.id; // Ambil dari user.id
 
       if (userId) {
         const { error } = await supabase.from("user_activities").insert({
