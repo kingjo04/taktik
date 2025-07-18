@@ -61,41 +61,22 @@ export default function ProgramDetail() {
       const programId = Number(id);
       if (isNaN(programId)) throw new Error("ID program tidak valid");
 
-      // Simulasi data dummy untuk testing
-      if (process.env.NODE_ENV === "development") {
-        const dummyProgram: ProgramDetail = {
-          id: programId,
-          name: `Program Pelatihan ${programId}`,
-          description: "Pelatihan intensif untuk meningkatkan skill Anda dengan metode terbaru.",
-          duration: "3 Bulan",
-          price: 500000,
-          image_url: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=2070&auto=format&fit=crop",
-        };
-        setProgram(dummyProgram);
+      const { data: programData, error: programError } = await supabase
+        .from("programs")
+        .select("id, name, description, duration, price, image_url")
+        .eq("id", programId)
+        .single();
+      if (programError) throw programError;
+      setProgram(programData as ProgramDetail);
 
-        const dummyTryouts: Tryout[] = [
-          { id: 1, name: "Tryout Matematika", is_active: true },
-          { id: 2, name: "Tryout Bahasa Inggris", is_active: false },
-        ];
-        setTryouts(dummyTryouts);
-      } else {
-        const { data: programData, error: programError } = await supabase
-          .from("programs")
-          .select("id, name, description, duration, price, image_url")
-          .eq("id", programId)
-          .single();
-        if (programError) throw programError;
-        setProgram(programData as ProgramDetail);
-
-        const { data: tryoutData, error: tryoutError } = await supabase
-          .from("tryouts")
-          .select("id, name, is_active")
-          .eq("program_id", programId)
-          .eq("is_active", true)
-          .order("id", { ascending: true });
-        if (tryoutError) throw tryoutError;
-        setTryouts(tryoutData as Tryout[]);
-      }
+      const { data: tryoutData, error: tryoutError } = await supabase
+        .from("tryouts")
+        .select("id, name, is_active")
+        .eq("program_id", programId)
+        .eq("is_active", true)
+        .order("id", { ascending: true });
+      if (tryoutError) throw tryoutError;
+      setTryouts(tryoutData as Tryout[]);
 
       const decodedToken = jwtDecode<CustomJwtPayload>(token);
       const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id);
@@ -302,7 +283,7 @@ export default function ProgramDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px] animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
       <div className="flex items-center mb-6">
         <button
           type="button"
@@ -311,9 +292,7 @@ export default function ProgramDetail() {
         >
           <FontAwesomeIcon icon={faArrowLeft} className="w-6 h-6 text-indigo-700" />
         </button>
-        <h1 className="ml-6 text-3xl sm:text-4xl font-bold text-indigo-900 bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent animate-pulse-once">
-          Detail Program
-        </h1>
+        <h1 className="ml-6 text-3xl sm:text-4xl font-bold text-indigo-900">Detail Program</h1>
       </div>
 
       <div
@@ -321,7 +300,7 @@ export default function ProgramDetail() {
         style={{ backgroundImage: `url(${program.image_url})` }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl flex items-center justify-center">
-          <h2 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg animate-fade-in">
+          <h2 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg">
             {program.name}
           </h2>
         </div>
@@ -443,27 +422,3 @@ export default function ProgramDetail() {
     </div>
   );
 }
-
-/* CSS Animations */
-<style>
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-  }
-  @keyframes pulseOnce {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-  .animate-pulse-once {
-    animation: pulseOnce 1.5s ease-in-out;
-  }
-  .menu-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  .menu-card:hover {
-    transform: translateY(-5px);
-  }
-</style>
