@@ -110,9 +110,11 @@ export default function NilaiTryout() {
         .eq("tryout_id", Number(id));
       if (error) throw error;
 
-      // Pastikan attempt_number ada dan filter hanya nilai yang valid
-      const uniqueAttempts = [...new Set(data.map((item: AttemptItem) => item.attempt_number).filter((num): num is number => num !== null))] 
-        .sort((a, b) => a - b);
+      // Pecah operasi untuk menghindari error tipe
+      const attemptNumbers = data.map((item: AttemptItem) => item.attempt_number);
+      const filteredNumbers = attemptNumbers.filter((num): num is number => num !== null) as number[];
+      const uniqueAttempts = Array.from(new Set<number>(filteredNumbers)).sort((a, b) => a - b);
+
       setAttempts(uniqueAttempts);
     } catch (err) {
       console.error("Error fetching attempts:", err);
