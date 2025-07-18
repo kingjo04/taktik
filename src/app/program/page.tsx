@@ -39,7 +39,7 @@ export default function Program() {
         let decodedToken;
         try {
           decodedToken = jwtDecode(token);
-          const userId = decodedToken.sub || decodedToken.user?.id; // Sesuaikan dengan struktur token
+          const userId = decodedToken.sub || decodedToken.user.id; // Sesuaikan dengan struktur token
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
