@@ -19,6 +19,11 @@ interface CustomJwtPayload {
   iat: number;
 }
 
+// Definisikan tipe untuk data attempt
+interface AttemptItem {
+  attempt_number: number | null;
+}
+
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlla25waGR1bGV5bmh1aWFxc3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTY4ODAsImV4cCI6MjA2ODA5Mjg4MH0.iZBnS3uGs68CmqrhQYAJdCZZGRqlKEThrm0B0FqyPVs";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -54,7 +59,7 @@ export default function NilaiTryout() {
         .eq("tryout_id", Number(id))
         .order("id", { ascending: true });
       if (questionError) throw questionError;
-      setQuestions(questionData);
+      setQuestions(questionData || []);
 
       const { data, error } = await supabase
         .from("user_tryout_results")
@@ -100,14 +105,15 @@ export default function NilaiTryout() {
 
       const { data, error } = await supabase
         .from("user_tryout_results")
-        .select("attempt_number")
+        .select("attempt_number", { count: "exact" })
         .eq("user_id", userId)
-        .eq("tryout_id", Number(id))
-        .groupBy("attempt_number");
+        .eq("tryout_id", Number(id));
       if (error) throw error;
 
-      const attemptNumbers = data.map((item) => item.attempt_number).sort((a, b) => a - b);
-      setAttempts(attemptNumbers);
+      // Pastikan attempt_number ada dan filter hanya nilai yang valid
+      const uniqueAttempts = [...new Set(data.map((item: AttemptItem) => item.attempt_number).filter((num): num is number => num !== null))] 
+        .sort((a, b) => a - b);
+      setAttempts(uniqueAttempts);
     } catch (err) {
       console.error("Error fetching attempts:", err);
     }
@@ -130,7 +136,7 @@ export default function NilaiTryout() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 p-4 sm:p-6">
-      <main className="flex-1 mx-auto max-w-4xl">
+      <main className="flex-1 mx-auto max-w-3xl">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 bg-white p-4 rounded-xl shadow-md animate-fade-in">
           <button
             onClick={() => router.back()}
@@ -235,3 +241,16 @@ export default function NilaiTryout() {
     </div>
   );
 }
+
+// CSS Animations
+const styles = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+`;
+
+const styleSheet = new CSSStyleSheet();
+styleSheet.replaceSync(styles);
+document.adoptedStyleSheets = [styleSheet];
