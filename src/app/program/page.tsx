@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faChevronDown, faChevronUp, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
-// Tipe untuk data program
 interface Program {
   id: number;
   name: string;
@@ -15,7 +14,6 @@ interface Program {
   image_url: string;
 }
 
-// Tipe aman untuk JWT Token
 interface CustomJwtPayload {
   sub?: string;
   user?: {
@@ -61,7 +59,6 @@ export default function Program() {
           setUserId(userId);
           console.log("Decoded Token - User ID:", userId);
 
-          // Cek apakah user sudah ada di tabel users
           const { data: existingUser, error: userCheckError } = await supabase
             .from("users")
             .select("id")
@@ -72,7 +69,7 @@ export default function Program() {
           }
           if (!existingUser) {
             const currentDate = new Date();
-            currentDate.setHours(currentDate.getHours() + 7); // Konversi WIB ke UTC
+            currentDate.setHours(currentDate.getHours() + 7);
             const utcDate = currentDate.toISOString();
             const { error: insertError } = await supabase.from("users").insert({
               id: userId,
@@ -93,7 +90,7 @@ export default function Program() {
         const { data: programsData, error: fetchError } = await supabase
           .from("programs")
           .select("id, name, price, image_url")
-          .order("price", { ascending: true});
+          .order("price", { ascending: true });
 
         if (fetchError) throw new Error("Gagal mengambil data program: " + fetchError.message);
         console.log("Programs fetched:", programsData);
@@ -104,8 +101,11 @@ export default function Program() {
             .from("user_registrations")
             .select("program_id")
             .eq("user_id", userId);
+
           if (regError) throw new Error("Gagal mengambil data registrasi: " + regError.message);
-          const registeredIds = registrations?.map((r) => r.program_id) || [];
+          console.log("Registrations data:", registrations);
+
+          const registeredIds = registrations?.map((r) => Number(r.program_id)) || [];
           setRegisteredProgramIds(registeredIds);
           console.log("Registered Program IDs for user", userId, ":", registeredIds);
 
@@ -124,7 +124,7 @@ export default function Program() {
     };
 
     fetchPrograms();
-  }, [router]);
+  }, [router, userId]);
 
   const handleProgramClick = async (programId: number) => {
     const token = localStorage.getItem("token");
