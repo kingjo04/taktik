@@ -255,6 +255,7 @@ export default function ProgramDetail() {
   };
 
   const isButtonDisabled = !isRegistered;
+  const isUTBKProgram = program?.name.toLowerCase().includes("utbk");
 
   if (loading) {
     return (
@@ -324,103 +325,113 @@ export default function ProgramDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 mb-8">
-        <Link href="/universitas" className="menu-card">
-          <div
-            className={`p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 transform ${
-              isButtonDisabled
-                ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-                : "hover:shadow-xl hover:scale-105"
-            }`}
-          >
-            <img
-              src="/Passing Grade.svg"
-              alt="Passing Grade"
-              className="w-16 h-16 mx-auto mb-4"
-            />
-            <p className="text-center text-gray-800 font-medium">Passing Grade</p>
-          </div>
-        </Link>
-
-        <button
-          onClick={handleTryoutClick}
-          className={`menu-card ${
-            isButtonDisabled
-              ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-              : "hover:shadow-xl hover:scale-105"
-          }`}
-          disabled={isButtonDisabled}
-        >
-          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300">
-            <img src="/Try Out.svg" alt="Try Out" className="w-16 h-16 mx-auto mb-4" />
-            <p className="text-center text-gray-800 font-medium">Try Out</p>
-          </div>
-        </button>
-
-        <button
-          onClick={handleGroupKonsultasi}
-          className={`menu-card ${
-            isButtonDisabled
-              ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-              : "hover:shadow-xl hover:scale-105"
-          }`}
-          disabled={isButtonDisabled}
-        >
-          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300">
-            <img
-              src="/Group Konsultasi.svg"
-              alt="Group Konsultasi"
-              className="w-16 h-16 mx-auto mb-4"
-            />
-            <p className="text-center text-gray-800 font-medium">Group Konsultasi</p>
-          </div>
-        </button>
-
-        <Link href={`/program/materi/${program.id}`} className="menu-card">
-          <div
-            className={`p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 ${
-              isButtonDisabled
-                ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-                : "hover:shadow-xl hover:scale-105"
-            }`}
-          >
-            <img src="/Materi.svg" alt="Materi" className="w-16 h-16 mx-auto mb-4" />
-            <p className="text-center text-gray-800 font-medium">Materi</p>
-          </div>
-        </Link>
-
-        <button
-          onClick={handlePartyBelajar}
-          className={`menu-card ${
-            isButtonDisabled
-              ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-              : "hover:shadow-xl hover:scale-105"
-          }`}
-          disabled={isButtonDisabled}
-        >
-          <div className="p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300">
-            <img src="/Party Belajar.svg" alt="Party Belajar" className="w-16 h-16 mx-auto mb-4" />
-            <p className="text-center text-gray-800 font-medium">Party Belajar</p>
-          </div>
-        </button>
-
-        <Link href={`/program/agenda/${program.id}`} className="menu-card">
-          <div
-            className={`p-4 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 ${
-              isButtonDisabled
-                ? "opacity-50 cursor-not-allowed bg-gray-400 border-gray-400"
-                : "hover:shadow-xl hover:scale-105"
-            }`}
-          >
-            <img
-              src="/Jadwal Pendampingan.svg"
-              alt="Jadwal Pendampingan"
-              className="w-16 h-16 mx-auto mb-4"
-            />
-            <p className="text-center text-gray-800 font-medium">Jadwal Pendampingan</p>
-          </div>
-        </Link>
+<div
+  className={`grid gap-4 sm:gap-6 mb-8 ${
+    isUTBKProgram ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-5"
+  }`}
+>
+  {isUTBKProgram && (
+    <Link
+      href={isButtonDisabled ? "#" : "/universitas"}
+      className={`w-full h-full ${isButtonDisabled ? "pointer-events-none" : ""}`}
+    >
+      <div
+        className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+          isButtonDisabled
+            ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400"
+            : "hover:shadow-xl hover:scale-105"
+        }`}
+      >
+        <img src="/Passing Grade.svg" alt="Passing Grade" className="w-16 h-16 mb-4" />
+        <p className="text-center text-gray-800 font-medium">Passing Grade</p>
       </div>
+    </Link>
+  )}
+
+  <button
+    onClick={handleTryoutClick}
+    disabled={isButtonDisabled}
+    className="w-full h-full"
+  >
+    <div
+      className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+        isButtonDisabled
+          ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400 pointer-events-none"
+          : "hover:shadow-xl hover:scale-105"
+      }`}
+    >
+      <img src="/Try Out.svg" alt="Try Out" className="w-16 h-16 mb-4" />
+      <p className="text-center text-gray-800 font-medium">Try Out</p>
+    </div>
+  </button>
+
+  <button
+    onClick={handleGroupKonsultasi}
+    disabled={isButtonDisabled}
+    className="w-full h-full"
+  >
+    <div
+      className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+        isButtonDisabled
+          ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400 pointer-events-none"
+          : "hover:shadow-xl hover:scale-105"
+      }`}
+    >
+      <img src="/Group Konsultasi.svg" alt="Group Konsultasi" className="w-16 h-16 mb-4" />
+      <p className="text-center text-gray-800 font-medium">Group Konsultasi</p>
+    </div>
+  </button>
+
+  <Link
+    href={isButtonDisabled ? "#" : `/program/materi/${program.id}`}
+    className={`w-full h-full ${isButtonDisabled ? "pointer-events-none" : ""}`}
+  >
+    <div
+      className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+        isButtonDisabled
+          ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400"
+          : "hover:shadow-xl hover:scale-105"
+      }`}
+    >
+      <img src="/Materi.svg" alt="Materi" className="w-16 h-16 mb-4" />
+      <p className="text-center text-gray-800 font-medium">Materi</p>
+    </div>
+  </Link>
+
+  <button
+    onClick={handlePartyBelajar}
+    disabled={isButtonDisabled}
+    className="w-full h-full"
+  >
+    <div
+      className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+        isButtonDisabled
+          ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400 pointer-events-none"
+          : "hover:shadow-xl hover:scale-105"
+      }`}
+    >
+      <img src="/Party Belajar.svg" alt="Party Belajar" className="w-16 h-16 mb-4" />
+      <p className="text-center text-gray-800 font-medium">Party Belajar</p>
+    </div>
+  </button>
+
+  <Link
+    href={isButtonDisabled ? "#" : `/program/agenda/${program.id}`}
+    className={`w-full h-full ${isButtonDisabled ? "pointer-events-none" : ""}`}
+  >
+    <div
+      className={`p-6 bg-white rounded-xl border border-stone-300 shadow-md transition-all duration-300 flex flex-col items-center justify-center h-full ${
+        isButtonDisabled
+          ? "opacity-50 cursor-not-allowed bg-red-200 border-red-400"
+          : "hover:shadow-xl hover:scale-105"
+      }`}
+    >
+      <img src="/Jadwal Pendampingan.svg" alt="Jadwal Pendampingan" className="w-16 h-16 mb-4" />
+      <p className="text-center text-gray-800 font-medium">Jadwal Pendampingan</p>
+    </div>
+  </Link>
+</div>
+
 
       {!isRegistered && tryouts.length > 0 && (
         <button
