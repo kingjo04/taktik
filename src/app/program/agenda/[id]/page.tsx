@@ -29,6 +29,10 @@ interface Tryout {
   is_free: boolean;
   location: string;
   schedule_date: string;
+  description: string;
+  system_info: string;
+  socialization_schedule: string;
+  party_learning_schedule: string;
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -56,7 +60,6 @@ export default function Jadwal() {
       const programId = Number(id);
       if (isNaN(programId)) throw new Error("ID program tidak valid");
 
-      // Decode token dengan validasi
       let decodedToken;
       try {
         decodedToken = jwtDecode<CustomJwtPayload>(token);
@@ -69,7 +72,6 @@ export default function Jadwal() {
 
       console.log("Extracted User ID:", userId, "Program ID from URL:", programId);
 
-      // Cek status terdaftar
       const { data: registration, error: regError } = await supabase
         .from("user_registrations")
         .select("id")
@@ -85,7 +87,6 @@ export default function Jadwal() {
         throw new Error("Anda belum terdaftar untuk program ini.");
       }
 
-      // Fetch tryouts
       const { data, error: tryoutError } = await supabase
         .from("tryouts")
         .select("*")
@@ -117,7 +118,7 @@ export default function Jadwal() {
   }
 
   if (error || !isRegistered) {
-    console.log("Render Error or Not Registered:", error, "isRegistered:", isRegistered); // Debug render
+    console.log("Render Error or Not Registered:", error, "isRegistered:", isRegistered);
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
         <div className="text-center">
@@ -133,7 +134,7 @@ export default function Jadwal() {
     );
   }
 
-  console.log("Rendering Tryouts:", tryouts); // Debug render sukses
+  console.log("Rendering Tryouts:", tryouts);
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
       <div className="max-w-7xl mx-auto">
@@ -166,9 +167,11 @@ export default function Jadwal() {
               </p>
               <p className="text-gray-600 text-sm mb-2">Jumlah Soal: {tryout.total_questions}</p>
               <p className="text-gray-600 text-sm mb-2">Durasi: {tryout.duration_minutes} menit</p>
-              <p className="text-gray-600 text-sm">
-                Harga: {tryout.is_free ? "Gratis" : `Rp ${tryout.price.toLocaleString("id-ID")}`}
-              </p>
+              <p className="text-gray-600 text-sm mb-2">Deskripsi: {tryout.description}</p>
+              <p className="text-gray-600 text-sm mb-2">Sistem: {tryout.system_info}</p>
+              <p className="text-gray-600 text-sm mb-2">Sosialisasi Jadwal: {tryout.socialization_schedule}</p>
+              <p className="text-gray-600 text-sm mb-2">Pesta Belajar: {tryout.party_learning_schedule}</p>
+
             </div>
           ))}
         </div>
