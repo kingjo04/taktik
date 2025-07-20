@@ -60,6 +60,31 @@ export default function Program() {
           if (!userId) throw new Error("User ID tidak ditemukan di token");
           setUserId(userId);
           console.log("Decoded Token - User ID:", userId);
+
+          // Cek apakah user sudah ada di tabel users
+          const { data: existingUser, error: userCheckError } = await supabase
+            .from("users")
+            .select("id")
+            .eq("id", userId)
+            .single();
+          if (userCheckError && userCheckError.code !== "PGRST116") {
+            throw userCheckError;
+          }
+          if (!existingUser) {
+            const currentDate = new Date();
+            currentDate.setHours(currentDate.getHours() + 7); // Konversi WIB ke UTC
+            const utcDate = currentDate.toISOString();
+            const { error: insertError } = await supabase.from("users").insert({
+              id: userId,
+              email: decodedToken.user?.email || "",
+              name: decodedToken.user?.name || "",
+              created_at: utcDate,
+              updated_at: utcDate,
+              metadata: {},
+            });
+            if (insertError) throw insertError;
+            console.log("User inserted into users table:", userId);
+          }
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
@@ -68,7 +93,7 @@ export default function Program() {
         const { data: programsData, error: fetchError } = await supabase
           .from("programs")
           .select("id, name, price, image_url")
-          .order("price", { ascending: true });
+          .order("price", { ascending: true});
 
         if (fetchError) throw new Error("Gagal mengambil data program: " + fetchError.message);
         console.log("Programs fetched:", programsData);
@@ -238,7 +263,7 @@ export default function Program() {
                       })}
                   </div>
                 ) : (
-                  <p className="text-gray-500">Belum ada program terdaftar, silahkan daftar di bawah terlebih dahulu.</p>
+                  <p className="text-gray-500">Belum ada program terdaftar.</p>
                 )}
               </div>
             )}
