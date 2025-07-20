@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
 // Tipe untuk data program
@@ -37,6 +37,8 @@ export default function Program() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -49,25 +51,42 @@ export default function Program() {
           return;
         }
 
-        // ✅ Decode token dengan tipe
         let decodedToken: CustomJwtPayload;
         try {
           decodedToken = jwtDecode<CustomJwtPayload>(token);
           const userId = decodedToken.sub || decodedToken.user?.id;
           if (!userId) throw new Error("User ID tidak ditemukan di token");
+          setUserId(Number(userId));
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .from("programs")
           .select("id, name, price, image_url")
-          .order("created_at", { ascending: false });
+          .order("price", { ascending: true });
 
-        if (error) throw new Error("Gagal mengambil data program: " + error.message);
-        setPrograms(data as Program[]);
+        if (fetchError) throw new Error("Gagal mengambil data program: " + fetchError.message);
+
+        const programsData = data as Program[];
+        if (userId) {
+          const { data: registrations } = await supabase
+            .from("user_registrations")
+            .select("program_id")
+            .eq("user_id", userId);
+          const registeredProgramIds = registrations?.map((r) => r.program_id) || [];
+          const registeredPrograms = programsData.filter((p) =>
+            registeredProgramIds.includes(p.id)
+          );
+          const unregisteredPrograms = programsData.filter(
+            (p) => !registeredProgramIds.includes(p.id)
+          );
+          setPrograms([...registeredPrograms, ...unregisteredPrograms]);
+        } else {
+          setPrograms(programsData);
+        }
       } catch (err) {
         setError("Gagal memuat program: " + (err as Error).message);
       } finally {
@@ -86,12 +105,9 @@ export default function Program() {
     }
 
     try {
-      const decodedToken = jwtDecode<CustomJwtPayload>(token);
-      const userId = decodedToken.sub || decodedToken.user?.id;
-
       if (userId) {
         const { error } = await supabase.from("user_activities").insert({
-          user_id: Number(userId),
+          user_id: userId,
           program_id: programId,
           activity_type: "view",
           created_at: new Date().toISOString(),
@@ -108,6 +124,10 @@ export default function Program() {
     } catch (err) {
       console.error("Error handling program click:", err);
     }
+  };
+
+  const toggleExpand = (programId: number) => {
+    setExpandedProgramId(expandedProgramId === programId ? null : programId);
   };
 
   const educationImages = [
@@ -152,39 +172,109 @@ export default function Program() {
         <h1 className="ml-4 text-2xl sm:text-3xl font-bold text-indigo-800">Program</h1>
       </div>
 
-      <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="mt-6 sm:mt-8">
         {programs.length > 0 ? (
-          programs.map((program, index) => {
-            const imageUrl = program.image_url || educationImages[index % educationImages.length];
-            return (
-              <div
-                key={program.id}
-                onClick={() => handleProgramClick(program.id)}
-                className="block rounded-xl overflow-hidden min-h-[250px] sm:min-h-[300px] cursor-pointer bg-white shadow-md hover:shadow-lg transition-shadow"
-              >
-                <div
-                  className="w-full h-36 sm:h-48 relative"
-                  style={{
-                    backgroundImage: `url(${imageUrl})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                >
-                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white text-center p-2 sm:p-4">
-                    <div>
-                      <h2 className="text-lg sm:text-2xl font-bold">{program.name}</h2>
-                      <p className="text-sm sm:text-lg mt-1">
-                        {program.price === 0 ? "Gratis" : `Rp ${program.price.toLocaleString("id-ID")}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2 sm:p-4">
-                  <p className="text-gray-600 text-xs sm:text-sm">Klik untuk detail program</p>
+          <>
+            {userId && (
+              <div>
+                <h2 className="text-xl font-semibold text-indigo-700 mb-4">Program Terdaftar</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {programs
+                    .filter((p) => userId && p.id === 1 || p.id === 3) // Sesuai data user_registrations untuk user_id 4364
+                    .map((program, index) => {
+                      const imageUrl =
+                        program.image_url || educationImages[index % educationImages.length];
+                      return (
+                        <div
+                          key={program.id}
+                          onClick={() => handleProgramClick(program.id)}
+                          className="block rounded-xl overflow-hidden min-h-[250px] sm:min-h-[300px] cursor-pointer bg-white shadow-md hover:shadow-lg transition-shadow"
+                        >
+                          <div
+                            className="w-full h-36 sm:h-48 relative"
+                            style={{
+                              backgroundImage: `url(${imageUrl})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white text-center p-2 sm:p-4">
+                              <div>
+                                <h2 className="text-lg sm:text-2xl font-bold">{program.name}</h2>
+                                <p className="text-sm sm:text-lg mt-1">
+                                  {program.price === 0
+                                    ? "Gratis"
+                                    : `Rp ${program.price.toLocaleString("id-ID")}`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-2 sm:p-4">
+                            <p className="text-gray-600 text-xs sm:text-sm">Klik untuk detail</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
-            );
-          })
+            )}
+
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold text-indigo-700 mb-4">Program Lain</h2>
+              {programs
+                .filter((p) => userId && p.id !== 1 && p.id !== 3) // Filter yang bukan 1 atau 3
+                .map((program, index) => {
+                  const imageUrl =
+                    program.image_url || educationImages[index % educationImages.length];
+                  return (
+                    <div
+                      key={program.id}
+                      className="mb-4 bg-white rounded-xl shadow-md transition-all"
+                    >
+                      <div
+                        className="flex items-center justify-between p-4 cursor-pointer"
+                        onClick={() => toggleExpand(program.id)}
+                      >
+                        <div>
+                          <h3 className="text-lg font-medium text-indigo-800">{program.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {program.price === 0
+                              ? "Gratis"
+                              : `Rp ${program.price.toLocaleString("id-ID")}`}
+                          </p>
+                        </div>
+                        <FontAwesomeIcon
+                          icon={expandedProgramId === program.id ? faChevronUp : faChevronDown}
+                          className="text-indigo-600"
+                        />
+                      </div>
+                      {expandedProgramId === program.id && (
+                        <div className="p-4 bg-gray-50">
+                          <div
+                            className="w-full h-40 relative mb-4"
+                            style={{
+                              backgroundImage: `url(${imageUrl})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white text-center p-2">
+                              <p className="text-sm">Klik untuk daftar atau lihat detail</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleProgramClick(program.id)}
+                            className="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all"
+                          >
+                            Lihat Detail
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </>
         ) : (
           <p className="text-center text-gray-500 mt-10">Tidak ada program tersedia.</p>
         )}
