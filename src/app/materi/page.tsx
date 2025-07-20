@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useParams, useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faPlay, faVideo } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faPlay, faVideo, faBook, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 interface Material {
   id: number;
@@ -14,6 +14,7 @@ interface Material {
   content_id: number;
   content_name: string;
   video_link: string;
+  content_text: string | null;
 }
 
 const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
@@ -27,6 +28,7 @@ export default function Materi() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -46,7 +48,8 @@ export default function Materi() {
         .from("materials")
         .select("*")
         .eq("program_id", programId)
-        .order("section_id", { ascending: true });
+        .order("section_id", { ascending: true }) // Urutkan berdasarkan section_id
+        .order("content_id", { ascending: true }); // Urutkan berdasarkan content_id di dalam section
       if (materialError) throw materialError;
       setMaterials(materialData as Material[]);
 
@@ -72,6 +75,22 @@ export default function Materi() {
   useEffect(() => {
     if (id) fetchData();
   }, [id]);
+
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const toggleSection = (sectionId: number) => {
+    const newExpandedSections = new Set(expandedSections);
+    if (newExpandedSections.has(sectionId)) {
+      newExpandedSections.delete(sectionId);
+    } else {
+      newExpandedSections.add(sectionId);
+    }
+    setExpandedSections(newExpandedSections);
+  };
 
   if (loading) {
     return (
@@ -100,11 +119,16 @@ export default function Materi() {
     );
   }
 
-  const getYouTubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  };
+  const groupedMaterials = materials.reduce((acc, material) => {
+    if (!acc[material.section_id]) {
+      acc[material.section_id] = {
+        section_title: material.section_title,
+        contents: [],
+      };
+    }
+    acc[material.section_id].contents.push(material);
+    return acc;
+  }, {} as { [key: number]: { section_title: string; contents: Material[] } });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
@@ -119,36 +143,66 @@ export default function Materi() {
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-900 mb-8">Materi Pembelajaran</h1>
 
         <div className="space-y-6">
-          {materials.map((material) => (
+          {Object.entries(groupedMaterials).map(([sectionId, { section_title, contents }]) => (
             <div
-              key={material.id}
-              className="bg-white p-6 rounded-2xl shadow-lg border border-stone-300"
+              key={sectionId}
+              className="bg-white rounded-2xl shadow-lg border border-stone-300 overflow-hidden"
             >
               <div
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setSelectedVideo(selectedVideo === material.video_link ? null : material.video_link)}
+                className="p-4 sm:p-6 bg-indigo-50 cursor-pointer flex justify-between items-center"
+                onClick={() => toggleSection(Number(sectionId))}
               >
-                <div>
-                  <h3 className="text-xl font-semibold text-indigo-800">{material.section_title}</h3>
-                  <p className="text-gray-600 text-sm">{material.content_name}</p>
-                  <p className="text-gray-500 text-xs mt-1">Klik untuk melihat video</p>
-                </div>
+                <h2 className="text-xl font-semibold text-indigo-800">{section_title}</h2>
                 <FontAwesomeIcon
-                  icon={faPlay}
-                  className="w-6 h-6 text-indigo-600 transition-transform duration-300"
+                  icon={faChevronRight}
+                  className={`w-5 h-5 text-indigo-600 transition-transform duration-300 ${
+                    expandedSections.has(Number(sectionId)) ? "rotate-90" : ""
+                  }`}
                 />
               </div>
-              {selectedVideo === material.video_link && (
-                <div className="mt-4">
-                  <div className="w-full aspect-video">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${getYouTubeId(material.video_link)}`}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full rounded-lg"
-                    ></iframe>
-                  </div>
+              {expandedSections.has(Number(sectionId)) && (
+                <div className="p-4 sm:p-6 space-y-4">
+                  {contents.map((material, index) => (
+                    <div
+                      key={material.id}
+                      className="bg-gray-50 p-4 rounded-lg shadow-inner flex items-start gap-4"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        <FontAwesomeIcon
+                          icon={faBook}
+                          className="w-6 h-6 text-indigo-500"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-800">
+                          {index + 1}. {material.content_name}
+                        </h3>
+                        <div className="text-gray-600 text-sm mt-2">
+                          {material.content_text || "Tidak ada teks materi."}
+                        </div>
+                        {material.video_link && (
+                          <div
+                            className="mt-3 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                            onClick={() => setSelectedVideo(selectedVideo === material.video_link ? null : material.video_link)}
+                          >
+                            <FontAwesomeIcon icon={faVideo} className="w-5 h-5" />
+                            <span>Lihat Video</span>
+                          </div>
+                        )}
+                        {selectedVideo === material.video_link && (
+                          <div className="mt-4 w-full aspect-video">
+                            <iframe
+                              src={`https://www.youtube.com/embed/${getYouTubeId(material.video_link)}`}
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full rounded-lg"
+                            ></iframe>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
