@@ -142,7 +142,7 @@ const UbahProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 flex items-center justify-center py-4 sm:py-6 md:py-8 px-4 sm:px-6 lg:px-12">
-      <div className="max-w-3xl w-full">
+      <div className="max-w-2xl w-full">
         <button
           onClick={() => router.back()}
           className="mb-4 sm:mb-6 p-2 sm:p-3 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
