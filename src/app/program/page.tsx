@@ -238,7 +238,7 @@ export default function Program() {
                       })}
                   </div>
                 ) : (
-                  <p className="text-gray-500">Belum ada program terdaftar.</p>
+                  <p className="text-gray-500">Belum ada program terdaftar, silahkan daftar di bawah terlebih dahulu.</p>
                 )}
               </div>
             )}
