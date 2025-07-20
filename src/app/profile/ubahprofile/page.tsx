@@ -141,19 +141,19 @@ const UbahProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
-      <div className="ml-[64px] max-w-4xl mx-auto"> {/* Tambahin ml-[64px] biar nggak overlap sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 flex items-center justify-center py-4 sm:py-6 md:py-8 px-4 sm:px-6 lg:px-12">
+      <div className="max-w-3xl w-full">
         <button
           onClick={() => router.back()}
-          className="mb-6 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300 transform hover:scale-110"
+          className="mb-4 sm:mb-6 p-2 sm:p-3 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
         >
-          <FontAwesomeIcon icon={faArrowLeft} className="text-indigo-600 text-lg" />
+          <FontAwesomeIcon icon={faArrowLeft} className="text-indigo-600 text-lg sm:text-xl" />
         </button>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-blue-600 mb-8 text-center animate-fade-in">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-blue-600 mb-6 sm:mb-8 text-center animate-fade-in">
           Edit Your Profile
         </h1>
 
-        <form onSubmit={handleSubmit} className="mx-auto max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-indigo-100 hover:shadow-2xl transition-all duration-300">
+        <form onSubmit={handleSubmit} className="mx-auto max-w-md lg:max-w-lg w-full bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 border border-indigo-100 hover:shadow-2xl transition-all duration-300">
           {[
             { id: "name", label: "Nama", type: "text" },
             { id: "username", label: "Username", type: "text" },
