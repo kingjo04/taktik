@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faChevronDown, faChevronUp, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
 import { jwtDecode } from "jwt-decode";
 
 // Tipe untuk data program
@@ -39,6 +39,7 @@ export default function Program() {
   const [error, setError] = useState<string | null>(null);
   const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
+  const [registeredProgramIds, setRegisteredProgramIds] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -47,6 +48,7 @@ export default function Program() {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
+          console.log("No token found, redirecting to login");
           router.push("/login");
           return;
         }
@@ -54,41 +56,43 @@ export default function Program() {
         let decodedToken: CustomJwtPayload;
         try {
           decodedToken = jwtDecode<CustomJwtPayload>(token);
-          const userId = decodedToken.sub || decodedToken.user?.id;
+          const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id);
           if (!userId) throw new Error("User ID tidak ditemukan di token");
-          setUserId(Number(userId));
+          setUserId(userId);
           console.log("Decoded Token - User ID:", userId);
         } catch (decodeError) {
           console.error("Token decode failed:", decodeError);
           throw new Error("Token tidak valid atau bukan JWT standar.");
         }
 
-        const { data, error: fetchError } = await supabase
+        const { data: programsData, error: fetchError } = await supabase
           .from("programs")
           .select("id, name, price, image_url")
           .order("price", { ascending: true });
 
         if (fetchError) throw new Error("Gagal mengambil data program: " + fetchError.message);
+        console.log("Programs fetched:", programsData);
 
-        const programsData = data as Program[];
+        const programs = programsData as Program[];
         if (userId) {
-          const { data: registrations } = await supabase
+          const { data: registrations, error: regError } = await supabase
             .from("user_registrations")
             .select("program_id")
             .eq("user_id", userId);
-          const registeredProgramIds = registrations?.map((r) => r.program_id) || [];
-          const registeredPrograms = programsData.filter((p) =>
-            registeredProgramIds.includes(p.id)
-          );
-          const unregisteredPrograms = programsData.filter(
-            (p) => !registeredProgramIds.includes(p.id)
-          );
+          if (regError) throw new Error("Gagal mengambil data registrasi: " + regError.message);
+          const registeredIds = registrations?.map((r) => r.program_id) || [];
+          setRegisteredProgramIds(registeredIds);
+          console.log("Registered Program IDs for user", userId, ":", registeredIds);
+
+          const registeredPrograms = programs.filter((p) => registeredIds.includes(p.id));
+          const unregisteredPrograms = programs.filter((p) => !registeredIds.includes(p.id));
           setPrograms([...registeredPrograms, ...unregisteredPrograms]);
         } else {
-          setPrograms(programsData);
+          setPrograms(programs);
         }
       } catch (err) {
         setError("Gagal memuat program: " + (err as Error).message);
+        console.error("Error in fetchPrograms:", err);
       } finally {
         setLoading(false);
       }
@@ -100,6 +104,7 @@ export default function Program() {
   const handleProgramClick = async (programId: number) => {
     const token = localStorage.getItem("token");
     if (!token) {
+      console.log("No token found, redirecting to login");
       router.push("/login");
       return;
     }
@@ -124,6 +129,12 @@ export default function Program() {
     } catch (err) {
       console.error("Error handling program click:", err);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    console.log("Token removed, redirecting to login");
+    router.push("/login");
   };
 
   const toggleExpand = (programId: number) => {
@@ -161,15 +172,24 @@ export default function Program() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 p-4 sm:p-6 ml-[64px]">
-      <div className="flex items-center">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <button
+            type="button"
+            className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300"
+            onClick={() => router.back()}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5 text-indigo-600" />
+          </button>
+          <h1 className="ml-4 text-2xl sm:text-3xl font-bold text-indigo-800">Program</h1>
+        </div>
         <button
-          type="button"
-          className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-all duration-300"
-          onClick={() => router.back()}
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300"
         >
-          <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5 text-indigo-600" />
+          <FontAwesomeIcon icon={faSignOutAlt} className="mr-2" />
+          Logout
         </button>
-        <h1 className="ml-4 text-2xl sm:text-3xl font-bold text-indigo-800">Program</h1>
       </div>
 
       <div className="mt-6 sm:mt-8">
@@ -178,51 +198,55 @@ export default function Program() {
             {userId && (
               <div>
                 <h2 className="text-xl font-semibold text-indigo-700 mb-4">Program Terdaftar</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {programs
-                    .filter((p) => userId && p.id === 1 || p.id === 3) // Sesuai data user_registrations untuk user_id 4364
-                    .map((program, index) => {
-                      const imageUrl =
-                        program.image_url || educationImages[index % educationImages.length];
-                      return (
-                        <div
-                          key={program.id}
-                          onClick={() => handleProgramClick(program.id)}
-                          className="block rounded-xl overflow-hidden min-h-[250px] sm:min-h-[300px] cursor-pointer bg-white shadow-md hover:shadow-lg transition-shadow"
-                        >
+                {registeredProgramIds.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {programs
+                      .filter((p) => registeredProgramIds.includes(p.id))
+                      .map((program, index) => {
+                        const imageUrl =
+                          program.image_url || educationImages[index % educationImages.length];
+                        return (
                           <div
-                            className="w-full h-36 sm:h-48 relative"
-                            style={{
-                              backgroundImage: `url(${imageUrl})`,
-                              backgroundSize: "cover",
-                              backgroundPosition: "center",
-                            }}
+                            key={program.id}
+                            onClick={() => handleProgramClick(program.id)}
+                            className="block rounded-xl overflow-hidden min-h-[250px] sm:min-h-[300px] cursor-pointer bg-white shadow-md hover:shadow-lg transition-shadow"
                           >
-                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white text-center p-2 sm:p-4">
-                              <div>
-                                <h2 className="text-lg sm:text-2xl font-bold">{program.name}</h2>
-                                <p className="text-sm sm:text-lg mt-1">
-                                  {program.price === 0
-                                    ? "Gratis"
-                                    : `Rp ${program.price.toLocaleString("id-ID")}`}
-                                </p>
+                            <div
+                              className="w-full h-36 sm:h-48 relative"
+                              style={{
+                                backgroundImage: `url(${imageUrl})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white text-center p-2 sm:p-4">
+                                <div>
+                                  <h2 className="text-lg sm:text-2xl font-bold">{program.name}</h2>
+                                  <p className="text-sm sm:text-lg mt-1">
+                                    {program.price === 0
+                                      ? "Gratis"
+                                      : `Rp ${program.price.toLocaleString("id-ID")}`}
+                                  </p>
+                                </div>
                               </div>
                             </div>
+                            <div className="p-2 sm:p-4">
+                              <p className="text-gray-600 text-xs sm:text-sm">Klik untuk detail</p>
+                            </div>
                           </div>
-                          <div className="p-2 sm:p-4">
-                            <p className="text-gray-600 text-xs sm:text-sm">Klik untuk detail</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Belum ada program terdaftar.</p>
+                )}
               </div>
             )}
 
             <div className="mt-6">
               <h2 className="text-xl font-semibold text-indigo-700 mb-4">Program Lain</h2>
               {programs
-                .filter((p) => userId && p.id !== 1 && p.id !== 3) // Filter yang bukan 1 atau 3
+                .filter((p) => !registeredProgramIds.includes(p.id))
                 .map((program, index) => {
                   const imageUrl =
                     program.image_url || educationImages[index % educationImages.length];
