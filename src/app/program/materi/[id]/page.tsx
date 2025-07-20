@@ -1,152 +1,165 @@
-
 "use client";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
-interface Content {
+import React, { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { useParams, useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faPlay, faVideo } from "@fortawesome/free-solid-svg-icons";
+
+interface Material {
   id: number;
+  program_id: number;
+  section_id: number;
+  section_title: string;
+  content_id: number;
   content_name: string;
   video_link: string;
 }
 
-interface Section {
-  id: number;
-  section_title: string;
-  contents: Content[];
-}
+const supabaseUrl = "https://ieknphduleynhuiaqsuc.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlla25waGR1bGV5bmh1aWFxc3VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTY4ODAsImV4cCI6MjA2ODA5Mjg4MH0.iZBnS3uGs68CmqrhQYAJdCZZGRqlKEThrm0B0FqyPVs";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function Materi() {
+  const { id } = useParams();
   const router = useRouter();
-  const [sections, setSections] = useState<Section[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const videosPerPage = 1; // 1 video per halaman
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token || !id) {
+        router.push("/login");
+        return;
+      }
+
+      const programId = Number(id);
+      if (isNaN(programId)) throw new Error("ID program tidak valid");
+
+      const { data: materialData, error: materialError } = await supabase
+        .from("materials")
+        .select("*")
+        .eq("program_id", programId)
+        .order("section_id", { ascending: true });
+      if (materialError) throw materialError;
+      setMaterials(materialData as Material[]);
+
+      const decodedToken = JSON.parse(atob(token.split(".")[1]));
+      const userId = Number(decodedToken.sub) || Number(decodedToken.user?.id);
+      if (userId) {
+        const { data: registration } = await supabase
+          .from("user_registrations")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("program_id", programId)
+          .limit(1);
+        setIsRegistered(!!registration?.length);
+      }
+    } catch (err) {
+      setError("Gagal memuat materi: " + (err as Error).message);
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMateri = async () => {
-      try {
-        const response = await fetch("https://api.taktix.co.id/student/matter/4", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = await response.json();
-        console.log("API Response:", data);
-        if (Array.isArray(data)) {
-          setSections(data);
-        } else {
-          setError("Format data tidak sesuai.");
-        }
-      } catch (error) {
-        console.error("Error fetching materi:", error);
-        setError("Terjadi kesalahan saat mengambil materi.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMateri();
-  }, []);
-
-  const getYouTubeEmbedUrl = (url: string) => {
-    const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/[^\/]+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
-    const videoId = videoIdMatch ? videoIdMatch[1] : null;
-    console.log("Video URL:", url, "Extracted ID:", videoId);
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
-  };
-
-  // Menggabungkan semua contents dari semua sections
-  const allContents = sections.flatMap((section) => section.contents);
-  const totalVideos = allContents.length;
-  const totalPages = Math.ceil(totalVideos / videosPerPage);
-  const currentVideoIndex = (currentPage - 1) * videosPerPage;
-  const currentVideo = allContents[currentVideoIndex];
-
-  const goToPreviousPage = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const goToNextPage = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  };
+    if (id) fetchData();
+  }, [id]);
 
   if (loading) {
-    return <p className="text-center mt-10 text-xl text-indigo-600 animate-pulse">Loading...</p>;
-  }
-
-  if (error || !sections.length) {
-    return <p className="text-red-500 text-center mt-10">{error || "Tidak ada materi tersedia"}</p>;
-  }
-
-  if (!currentVideo) {
-    return <p className="text-center mt-10">Tidak ada video untuk halaman ini.</p>;
-  }
-
-  return (
-    <div>
-      <div className="mx-40 my-14">
-        <div className="flex items-center">
-          <button type="button" className="mt-1" onClick={() => router.back()}>
-            <FontAwesomeIcon icon={faArrowLeft} className="size-5 opacity-75" />
-          </button>
-          <h1 className="ml-4 my-2">Materi</h1>
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100">
+        <div className="flex items-center gap-3 text-indigo-700 animate-pulse">
+          <div className="w-8 h-8 border-4 border-t-indigo-700 border-b-transparent rounded-full animate-spin"></div>
+          <span className="text-2xl font-semibold">Memuat Materi...</span>
         </div>
       </div>
+    );
+  }
 
-      <div className="flex justify-center items-center mt-4 mb-2">
-        <div className="flex flex-col text-base rounded-none max-w-[738px] w-full">
-          {sections
-            .filter((section) => section.contents.some((content) => content.id === currentVideo.id))
-            .map((section) => (
-              <div key={section.id} className="mb-6">
-                <div className="px-5 py-3 w-full font-semibold text-white bg-blue-700 rounded-t-2xl">
-                  {section.section_title}
+  if (error || !isRegistered) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
+        <div className="text-center">
+          <p className="text-red-600 text-xl mb-6">{error || "Anda belum terdaftar untuk program ini."}</p>
+          <button
+            onClick={() => router.push(`/program/${id}`)}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-300"
+          >
+            <span className="font-medium">Kembali ke Detail Program</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 p-4 sm:p-6 ml-[64px]">
+      <div className="max-w-7xl mx-auto">
+        <button
+          onClick={() => router.back()}
+          className="p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-110 mb-6"
+        >
+          <FontAwesomeIcon icon={faArrowLeft} className="w-6 h-6 text-indigo-700" />
+        </button>
+
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-900 mb-8">Materi Pembelajaran</h1>
+
+        <div className="space-y-6">
+          {materials.map((material) => (
+            <div
+              key={material.id}
+              className="bg-white p-6 rounded-2xl shadow-lg border border-stone-300"
+            >
+              <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setSelectedVideo(selectedVideo === material.video_link ? null : material.video_link)}
+              >
+                <div>
+                  <h3 className="text-xl font-semibold text-indigo-800">{material.section_title}</h3>
+                  <p className="text-gray-600 text-sm">{material.content_name}</p>
+                  <p className="text-gray-500 text-xs mt-1">Klik untuk melihat video</p>
                 </div>
-                <div className="px-5 py-3 bg-white rounded-b-2xl border border-solid border-neutral-400">
-                  <div className="font-semibold">{currentVideo.content_name}</div>
-                  {getYouTubeEmbedUrl(currentVideo.video_link) ? (
+                <FontAwesomeIcon
+                  icon={faPlay}
+                  className="w-6 h-6 text-indigo-600 transition-transform duration-300"
+                />
+              </div>
+              {selectedVideo === material.video_link && (
+                <div className="mt-4">
+                  <div className="w-full aspect-video">
                     <iframe
-                      width="100%"
-                      height="315"
-                      src={`${getYouTubeEmbedUrl(currentVideo.video_link)}?rel=0`}
-                      title={currentVideo.content_name}
+                      src={`https://www.youtube.com/embed/${getYouTubeId(material.video_link)}`}
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                      className="mt-3 rounded-2xl"
-                      style={{ maxWidth: "627px" }}
+                      className="w-full h-full rounded-lg"
                     ></iframe>
-                  ) : (
-                    <p className="mt-3 text-red-500">Link YouTube tidak valid</p>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div className="flex justify-center gap-4 mt-4">
-        <button
-          onClick={goToPreviousPage}
-          disabled={currentPage === 1}
-          className="px-4 py-2 bg-blue-700 text-white rounded-lg disabled:bg-gray-400"
-        >
-          <FontAwesomeIcon icon={faChevronLeft} />
-        </button>
-        <span className="px-4 py-2">
-          Halaman {currentPage} dari {totalPages}
-        </span>
-        <button
-          onClick={goToNextPage}
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 bg-blue-700 text-white rounded-lg disabled:bg-gray-400"
-        >
-          <FontAwesomeIcon icon={faChevronRight} />
-        </button>
+        {materials.length === 0 && (
+          <div className="text-center text-gray-700 mt-10">
+            <p className="text-xl">Belum ada materi tersedia.</p>
+          </div>
+        )}
       </div>
     </div>
   );
